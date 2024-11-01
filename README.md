@@ -9,9 +9,11 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] streaming
 - [x] syntax highlighting
 - [x] switch system prompts
-- [ ] templates for standard instruction requests
 - [x] decent REPL
 - [x] REPL command mode
+- [ ] templates for standard instruction requests
 - [ ] integrate with other things like RAG / vdb
 - [ ] chat editing
+- [ ] use proper config dir
+- [ ] dump default conf if missing
 - [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex)

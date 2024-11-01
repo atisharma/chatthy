@@ -8,11 +8,12 @@ Application for simple chat REPL.
 (require hyrule [defmain])
 
 (import hyrule [assoc])
-(import hyjinx.lib [first rest])
+(import hyjinx.lib [first rest slurp])
 (import itertools [pairwise])
 
 (import asyncio)
 (import re)
+(import os)
 (import pansi [ansi])
 (import shutil [get-terminal-size])
 (import shlex)
@@ -206,38 +207,7 @@ Application for simple chat REPL.
   
 (defn output-help []
   "Show the help text."
-  (output-text "
-# Client input commands
-    F1                show this help text
-    Ctrl-l            toggle multiline input
-    Ctrl-q            quit
-    Shift-tab         send a server command
-
-# Chat view and output
-    Ctrl-b / PGUP     scroll output up one page
-    Ctrl-f / PGDOWN   scroll output down one page
-    Ctrl-r            refresh the output window
-    Ctrl-c            cancel generation (not implemented)
-
-# Commands (Shift-tab)
-    chats             list existing chats
-    commands          list advertised server commands
-    destroy           destroy the current chat
-    switch :chat-id new-chat-name
-                      switch to another chat
-    system :prompt \"A fancy new system prompt.\"
-                      set the system prompt
-    undo              destroy the last message pair in the chat
-
-# Readline-compatible shortcuts (a selection)
-    Ctrl-a            start of line
-    Ctrl-e            end of line
-    Ctrl-u            delete line
-    Ctrl-u            delete back to start of line
-    Ctrl-k            delete forward to end of line
-    Ctrl-w            delete word behind cursor
-  
-  "))
+  (output-text (slurp (or (+ (os.path.dirname __file__) "/client-help.md")))))
 
 ;; * key bindings
 ;;   Take care: many common things like ctrl-m (return) or ctrl-h (backspace)

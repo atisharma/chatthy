@@ -15,9 +15,12 @@ Chats and account details are stored as simple json files.
 (import json)
 (import os [unlink])
 (import pathlib [Path])
+(import platformdirs [user-config-dir])
 (import shutil [rmtree])
 (import time [time])
 
+;; use config dir
+;; (file-exists (Path (user-config-dir "chatthy") fname))
 
 ;; Identify and create the storage directory
 ;; -----------------------------------------------------------------------------

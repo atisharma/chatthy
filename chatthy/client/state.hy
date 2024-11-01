@@ -5,11 +5,12 @@ Manage the client's shared state.
 (import hyjinx [config])
 
 (import asyncio [Queue])
+(import platformdirs [user-config-dir])
 
 
 ;; TODO
-;; - better chat-id location
-;; - better app location
+;; use config dir
+;; (file-exists (Path (user-config-dir "chatthy") "client.toml"))
 
 (setv cfg (config "client.toml"))
 (setv chat-id (:chat-id cfg "default"))
