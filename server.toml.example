@@ -1,0 +1,21 @@
+listen = "tcp://*:23456"
+storage = "state"
+tasks = 5
+
+system = "Provide concise, meaningful responses. Use markdown where appropriate and assume a terminal interface. Do not show examples unless explicitly asked. When correcting code, just display the corrections, not the entire code. Avoid repetition."
+
+[providers.openai]
+scheme = "openai"
+api_key = "sk-some-api-key"
+model = "gpt-4o-mini"
+
+[providers.tabby]
+scheme = "tabby"
+admin_key = "some-api-key"
+api_key = "some-api-key"
+base_url = "http://localhost:5000/v1"
+
+[providers.anthropic]
+scheme = "anthropic"
+api_key = "sk-some-api-key"
+model = "claude-3-5-sonnet"
