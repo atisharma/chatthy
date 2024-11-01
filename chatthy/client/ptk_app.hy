@@ -130,38 +130,20 @@ Application for simple chat REPL.
     "Set up the full-screen application, widgets, style and layout."
 
     (let [ptk-style (style-from-pygments-cls (get-style-by-name (:style state.cfg "friendly_grayscale")))]
-      (setv output-field.text banner)
       (setv container (HSplit [
                                (VSplit [status-field chat-id-field mode-field])
                                ;(HorizontalLine) 
                                output-field
-                               ;(HorizontalLine) 
+                               (HorizontalLine) 
                                input-field]))
-      (setv chat-id-field.text f"{state.username} [{state.chat-id}]")
+      (setv chat-id-field.text f"{state.username} [{state.chat-id} @ {state.provider}]")
+      (output-text banner)
       (output-help)
       (.__init__ (super) :layout (Layout container :focused-element input-field)
                          :key-bindings kb
                          :style ptk-style
                          :mouse-support True
-                         :full-screen True)))
-
-  (defn output-text [self output [replace False]]
-    "Append output to output buffer text.
-    Replaces text of output buffer.
-    Moves cursor to the end."
-    (output-text (.replace output "\t" "    ") :replace replace))
-
-  (defn status-text [self text]
-    "Set the status field text. Parses ANSI codes."
-    (status-text text))
-
-  (defn mode-text [self text]
-    "Set the mode field text. Parses ANSI codes."
-    (mode-text text))
-
-  (defn :async set-chat-id [self * chat-id]
-    "Set the chat id to the contents of the input field."
-    (await (set-chat-id :chat-id chat-id))))
+                         :full-screen True))))
 
 (defn :async set-chat-id [* [chat-id None]]
   "Set the chat id."
@@ -185,8 +167,9 @@ Application for simple chat REPL.
   Moves cursor to the end."
   (let [new-text (if replace
                    output
-                   (+ output-field.text output))]
-    (setv output-field.document (Document :text new-text :cursor-position (len new-text))))
+                   (+ output-field.text output))
+        tabbed-text (.replace new-text "\t" "    ")]
+    (setv output-field.document (Document :text tabbed-text :cursor-position (len tabbed-text))))
   (invalidate))
 
 (defn status-text [text]
@@ -207,7 +190,8 @@ Application for simple chat REPL.
   
 (defn output-help []
   "Show the help text."
-  (output-text (slurp (or (+ (os.path.dirname __file__) "/client-help.md")))))
+  (output-text (slurp (+ (os.path.dirname __file__) "/client-help.md"))
+               :replace False))
 
 ;; * key bindings
 ;;   Take care: many common things like ctrl-m (return) or ctrl-h (backspace)
@@ -256,8 +240,8 @@ Application for simple chat REPL.
   (scroll_page_down event)
   (event.app.layout.focus input-field))
   
-(defn [(kb.add "c-l")] _ [event]
-  "Pressing Ctrl-l will toggle multi-line input."
+(defn [(kb.add "escape" "m")] _ [event]
+  "Pressing Escape-m will toggle multi-line input."
   (let [term (get-terminal-size)]
     (if input-field.multiline
       (do ;; -> single-line

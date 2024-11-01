@@ -27,10 +27,14 @@ Chat completion functions.
   "Generate a streaming completion using the router API endpoint."
   (let [client (provider client-name)]
     (stream-completion client messages #** kwargs)))
-  
+
 (defmethod stream-completion [#^ llm.OpenAI client #^ list messages * [stream True] [max-tokens 4000] #** kwargs]
   "Generate a streaming completion using the chat completion endpoint."
-  (let [stream (client.chat.completions.create
+  (let [messages (lfor m messages
+                       :if (in (:role m) ["user" "assistant" "system"])
+                       {"role" (:role m)
+                        "content" (:content m)})
+        stream (client.chat.completions.create
                  :model (.pop kwargs "model" (getattr client "model" None))
                  :messages messages
                  :stream stream
@@ -50,8 +54,9 @@ Chat completion functions.
                                      :if (= (:role m) "system")
                                      (:content m)))
         messages (lfor m messages
-                       :if (not (= (:role m) "system"))
-                       m)]
+                       :if (in (:role m) ["user" "assistant"])
+                       {"role" (:role m)
+                        "content" (:content m)})]
     (with [stream (client.messages.stream
                     :model (.pop kwargs "model" (getattr client "model" "claude-3-5-sonnet"))
                     :system system-messages

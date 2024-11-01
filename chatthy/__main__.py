@@ -14,9 +14,11 @@ def serve():
     import chatthy.server.server
     chatthy.server.server.run()
 
-if __name__ == '__main__':
+def run():
     if len(sys.argv) > 1 and sys.argv[1] == "serve":
         serve()
     else:
         client()
 
+if __name__ == '__main__':
+    run()

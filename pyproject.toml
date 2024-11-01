@@ -1,0 +1,54 @@
+[build-system]
+requires = [
+  "setuptools>=64"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chatthy"
+description = "A minimal LLM network chat server/client app."
+authors = [
+    {name = "Ati Sharma", email = "ati+chatthy@agalmic.ltd"},
+]
+dynamic = ["version", "readme"]
+requires-python = ">=3.11"
+keywords = ["hy", "hylang", "zeromq", "llm", "openai", "anthropic"]
+license = {file = "LICENSE"}
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Lisp"
+]
+dependencies = [
+    "hy",
+    "hyrule",
+    "hyjinx",
+    "pansi",
+    "toolz",
+    "platformdirs",
+    "prompt_toolkit",
+    "pygments"
+]
+
+[project.optional-dependencies]
+server = ["ecdsa", "pyzmq", "zstandard", "msgpack", "openai", "anthropic"]
+
+[project.urls]
+Repository = "https://github.com/atisharma/chatthy"
+
+[project.scripts]
+chatthy = "chatthy.__main__:run"
+
+[tool.setuptools.dynamic]
+readme = {file = "README.md", content-type = "text/markdown"}
+version = {attr = "chatthy.__version__"}
+
+[tool.setuptools.package-data]
+"*" = ["*.hy", "*.md", "*.json"]
+
+# ... other project metadata fields as listed in:
+#     https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+

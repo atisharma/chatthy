@@ -9,10 +9,13 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] streaming
 - [x] syntax highlighting
 - [x] switch system prompts
+- [ ] select from saved system prompts (personalities)
 - [x] decent REPL
 - [x] REPL command mode
+- [ ] cut/select from output
 - [ ] templates for standard instruction requests
 - [ ] integrate with other things like RAG / vdb
+- [ ] tools
 - [ ] chat editing
 - [ ] use proper config dir
 - [ ] dump default conf if missing

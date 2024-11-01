@@ -24,14 +24,14 @@ Implements server side of async DEALER-ROUTER pattern.
 (import zmq.asyncio)
 
 (import chatthy.server.completions [stream-completion])
-(import chatthy.server.state [get-chat set-chat delete-chat list-chats
+(import chatthy.server.state [cfg
+                              get-chat set-chat delete-chat list-chats
                               get-account set-account update-account
                               get-pubkey])
 
 (import asyncio [CancelledError])
 
 
-(setv cfg (config "server.toml"))
 (setv context (zmq.asyncio.Context))
 (setv socket (.socket context zmq.ROUTER))
 
@@ -59,7 +59,7 @@ Implements server side of async DEALER-ROUTER pattern.
 (defn :async [rpc] account [* sid username #** kwargs]
   "Show account details."
   (await (echo :sid sid
-               :result (+ username
+               :result (+ f"\naccount\n{username}\n"
                           (.join "\n"
                             (lfor [k v] (.items (get-account username))
                               f"{k}: {v}"))))))
@@ -77,6 +77,13 @@ Implements server side of async DEALER-ROUTER pattern.
   (await (client-rpc sid
                      "chats"
                      :result (list-chats username))))
+
+(defn :async [rpc] providers [* sid #** kwargs]
+  "List the providers available to clients."
+  (await (echo :sid sid
+               :result (+ "providers available:\n\n"
+                          (.join "\n"
+                            (sorted (list (.keys (:providers cfg)))))))))
 
 (defn :async [rpc] commands [* sid #** kwargs]
   "List the commands advertised to clients."
