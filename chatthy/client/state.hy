@@ -12,10 +12,18 @@ Manage the client's shared state.
 ;; use config dir
 ;; (file-exists (Path (user-config-dir "chatthy") "client.toml"))
 
+;; Global config options
+;; -----------------------------------------------------------------------------
+
 (setv cfg (config "client.toml"))
-(setv chat-id (:chat-id cfg "default"))
+(setv chat (:chat cfg "default"))
 (setv username (:username cfg "Anon"))
 (setv provider (:provider cfg None))
+
+;; Global vars
+;; -----------------------------------------------------------------------------
+
+(setv token-count 0)
 
 ;; Queues
 ;; -----------------------------------------------------------------------------

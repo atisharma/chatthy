@@ -17,7 +17,9 @@ Implements server side of async DEALER-ROUTER pattern.
 (import asyncio)
 (import inspect [signature])
 (import json)
+(import re)
 (import sys)
+(import tabulate [tabulate])
 (import time [time])
 (import traceback [format-exception])
 (import zmq)
@@ -50,19 +52,17 @@ Implements server side of async DEALER-ROUTER pattern.
                      "echo"
                      :result {"role" "server" "content" result})))
 
-(defn :async [rpc] messages [* sid username chat-id #** kwargs]
+(defn :async [rpc] messages [* sid username chat #** kwargs]
   ;;Send all the user's messages.
   (await (client-rpc sid
                      "messages"
-                     :result (get-chat username chat-id))))
+                     :result (get-chat username chat))))
 
 (defn :async [rpc] account [* sid username #** kwargs]
   "Show account details."
   (await (echo :sid sid
-               :result (+ f"\naccount\n{username}\n"
-                          (.join "\n"
-                            (lfor [k v] (.items (get-account username))
-                              f"{k}: {v}"))))))
+               :result (+ f"\naccount\n{username}\n\n"
+                          (tabulate (.items (get-account username)))))))
 
 (defn :async [rpc] system [* sid username [prompt None] #** kwargs]
   "Sets the system prompt for that user."
@@ -82,55 +82,58 @@ Implements server side of async DEALER-ROUTER pattern.
   "List the providers available to clients."
   (await (echo :sid sid
                :result (+ "providers available:\n\n"
-                          (.join "\n"
+                          (tabulate
                             (sorted (list (.keys (:providers cfg)))))))))
 
 (defn :async [rpc] commands [* sid #** kwargs]
   "List the commands advertised to clients."
   (await (echo :sid sid
                :result (+ "commands available:\n\n"
-                          (.join "\n"
+                          (tabulate
                             (sorted
                               (lfor [k v] (.items rpcs)
                                 :if v.__doc__
-                                (let [sig (-> (signature v)
-                                              (str)
-                                              (.replace "sid, " "")
-                                              (.replace ", **kwargs" "")
-                                              (.replace "(*" "")
-                                              (.replace ")" "")
-                                              (.replace ", " " :"))]
-                                  f"{k} {sig} -- {v.__doc__}"))))))))
+                                (let [sig (->> (signature v)
+                                               (str)
+                                               (re.sub r"sid, " "")
+                                               (re.sub r", \*\*kwargs" "")
+                                               (re.sub r"\(\*" "")
+                                               (re.sub r"\)" "")
+                                               (re.sub r", " " :")
+                                               (re.sub r" :username" "")
+                                               (re.sub r"=[\w]+" ""))]
+                                  #( k sig v.__doc__))))
+                            :headers ["command" "kwargs" "doc"])))))
 
-(defn :async [rpc] destroy [* sid username chat-id]
+(defn :async [rpc] destroy [* sid username chat]
   "Destroy the whole chat."
-  (delete-chat username chat-id)
-  (await (messages :sid sid :username username :chat-id chat-id))
+  (delete-chat username chat)
+  (await (messages :sid sid :username username :chat chat))
   (await (client-rpc sid "info" :result "Chat destroyed.")))
 
-(defn :async [rpc] undo [* sid username chat-id #** kwargs]
+(defn :async [rpc] undo [* sid username chat #** kwargs]
   "Destroy the last message pair."
-  (let [messages (cut (get-chat username chat-id) -2)]
-    (set-chat messages username chat-id))
-  (await (messages :sid sid :username username :chat-id chat-id)))
+  (let [messages (cut (get-chat username chat) -2)]
+    (set-chat messages username chat))
+  (await (messages :sid sid :username username :chat chat)))
 
-(defn :async [rpc] chat [* sid username chat-id line provider #** kwargs]
+(defn :async [rpc] chat [* sid username chat line provider #** kwargs]
   ;; Send the streamed reply in batched chunks.
   (let [reply ""
         chunk ""
         system-msg {"role" "system" "content" (:system (get-account username) (:system cfg))}
         usr-msg {"role" "user" "content" line "timestamp" (time)}
-        messages (get-chat username chat-id)]
+        messages (get-chat username chat)]
     (for [chunk (map (fn [xs] (.join "" xs))
                      (batched (stream-completion provider [system-msg #* messages usr-msg] #** kwargs)
                               (:batch cfg 2)))]
       (+= reply chunk)
       (await (client-rpc sid "status" :result "streaming"))
       (await (client-rpc sid "chunk" :result chunk)))
-    (await (client-rpc sid "chunk" :result "\n"))
+    (await (client-rpc sid "chunk" :result "\n\n"))
     (.append messages usr-msg)
     (.append messages {"role" "assistant" "content" reply "timestamp" (time)})
-    (set-chat messages username chat-id))
+    (set-chat messages username chat))
   (await (client-rpc sid "status" :result "ready")))
 
 ;; * RPC message handling stuff
@@ -141,16 +144,6 @@ Implements server side of async DEALER-ROUTER pattern.
   Wraps and sends the message to the client."
   (let [msg {"method" method #** kwargs}]
     (await (.send-multipart socket [sid (wrap msg)]))))
-
-;; TODO use hyjinx.crypto.is-recent instead
-(defn is-stale [client-time [threshold 60]]
-  "Is client's message time outside threshold (seconds) of server time, or bad?"
-  (try
-    (let [ct (float client-time)
-          diff (abs (- ct (time)))]
-      (> diff threshold))
-    (except [ValueError]
-      True)))
 
 (defn :async handle-msgs []
   "Verify and handoff incoming messages."
@@ -169,7 +162,7 @@ Implements server side of async DEALER-ROUTER pattern.
                                           (str payload)))]
 
             (cond
-              (is-stale client-time)
+              (not (crypto.is-recent client-time))
               (await (client-rpc sid "status" :result f"'{(:method payload)}' request stale, server may be busy or your clock is wrong."))
 
               (crypto.verify pub-key signature expected-hash)

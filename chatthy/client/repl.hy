@@ -59,7 +59,7 @@ The main REPL where we read output and issue commands.
         (when line
           (print-input line)
           (await (server-rpc :method "chat"
-                             :chat-id state.chat-id
+                             :chat state.chat
                              :line line
                              :provider state.provider))))
       (except [e [Exception]]

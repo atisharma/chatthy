@@ -4,8 +4,14 @@ Storage is done in the state module.
 "
 
 
+;; token length
+
 ;; truncate
 
 ;; templating
-;; system prompts
 
+;; RAG templating
+
+;; personalities
+
+;; summaries

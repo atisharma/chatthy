@@ -18,7 +18,7 @@ Most readline-compatible bindings are implemented.
     Ctrl-r            refresh the output window
     Ctrl-c            cancel generation (not implemented)
 
-    switch :chat-id new-chat-name
+    switch :chat new-chat-name
                       switch to another chat
 
 # Server commands (Shift-tab)

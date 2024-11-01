@@ -1,7 +1,7 @@
 "
-Manages global -- (mostly) mutable -- server state, and its persistence.
+Manages global mutable server state, and its persistence.
 
-Chats and account details are stored as simple json files.
+Chats and account details are stored as json files.
 "
 
 (require hyrule.argmove [-> ->>])
@@ -19,41 +19,50 @@ Chats and account details are stored as simple json files.
 (import shutil [rmtree])
 (import time [time])
 
-;; use config dir
+
+;; TODO use config dir
 ;; (file-exists (Path (user-config-dir "chatthy") fname))
+
+;; TODO proper Path objects so it works on non-unix
+
+;; TODO rename chat
+
 
 ;; Identify and create the storage directory
 ;; -----------------------------------------------------------------------------
 
 (setv cfg (config "server.toml"))
 (setv storage-dir (:storage cfg "state"))
+(setv accounts-dir f"{storage_dir}/accounts")
+(setv chats-dir f"{storage_dir}/chats")
 
-(mkdir storage_dir)
-(mkdir f"{storage_dir}/accounts")
+(mkdir storage-dir)
+(mkdir accounts_dir)
+(mkdir chats_dir)
 
 ;; chat persistence
-;; key is username, chat-id
+;; key is username, chat
 ;; -----------------------------------------------------------------------------
 
-(defmethod get-chat [#^ str username #^ str chat-id]
+(defmethod get-chat [#^ str username #^ str chat]
   "Retrieve the chat."
-  (or (jload f"state/chats/{username}/{chat_id}.json") []))
+  (or (jload f"{chats_dir}/{username}/{chat}.json") []))
 
-(defmethod set-chat [#^ list messages #^ str username #^ str chat-id]
+(defmethod set-chat [#^ list messages #^ str username #^ str chat]
   "Store the chat."
-  (mkdir f"state/chats/{username}")
-  (jsave messages f"state/chats/{username}/{chat_id}.json")
+  (mkdir f"{chats_dir}/{username}")
+  (jsave messages f"{chats_dir}/{username}/{chat}.json")
   messages)
 
-(defmethod delete-chat [#^ str username #^ str chat-id]
+(defmethod delete-chat [#^ str username #^ str chat]
   "Completely remove a chat."
   (try
-    (unlink f"state/chats/{username}/{chat_id}.json")
+    (unlink f"{chats_dir}/{username}/{chat}.json")
     (except [FileNotFoundError])))
   
 (defmethod list-chats [#^ str username]
   "List chats available to a user."
-  (lfor f (filenames f"state/chats/{username}")
+  (lfor f (filenames f"{chats_dir}/{username}")
     (. (Path f) stem)))
 
 ;; accounts and identity
@@ -62,11 +71,11 @@ Chats and account details are stored as simple json files.
 
 (defmethod get-account [#^ str username]
   (when username
-    (or (jload f"state/accounts/{username}.json") {})))
+    (or (jload f"{accounts_dir}/{username}.json") {})))
 
 (defmethod set-account [#^ dict account #^ str username]
   (when username
-    (jsave account f"state/accounts/{username}.json")
+    (jsave account f"{accounts_dir}/{username}.json")
     account))
 
 (defmethod update-account [#^ str username #** kwargs]
@@ -77,8 +86,8 @@ Chats and account details are stored as simple json files.
 (defmethod delete-account [#^ str username]
   "Completely remove an account."
   (try
-    (unlink f"state/accounts/{username}.json")
-    (rmtree f"state/chats")
+    (unlink f"{accounts_dir}/{username}.json")
+    (rmtree f"{chats_dir}/{username}")
     (except [FileNotFoundError])))
 
 (defn [cache] get-pubkey [#^ str username #^ str pub-key]

@@ -13,10 +13,12 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] decent REPL
 - [x] REPL command mode
 - [ ] cut/select from output
+- [ ] inject from file
 - [ ] templates for standard instruction requests
 - [ ] integrate with other things like RAG / vdb
 - [ ] tools
 - [ ] chat editing
+- [ ] chat truncation
 - [ ] use proper config dir
 - [ ] dump default conf if missing
 - [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex)

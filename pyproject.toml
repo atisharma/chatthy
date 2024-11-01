@@ -27,6 +27,7 @@ dependencies = [
     "hyrule",
     "hyjinx",
     "pansi",
+    "tiktoken",
     "toolz",
     "platformdirs",
     "prompt_toolkit",

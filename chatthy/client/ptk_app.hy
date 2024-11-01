@@ -1,10 +1,11 @@
 "
-Application for simple chat REPL.
+Prompt-toolkit application for simple chat REPL.
 "
 
 ;; TODO cut, paste
 ;; TODO Ctrl-C cancel generation
 
+(import hy [mangle])
 (require hyrule [defmain])
 
 (import hyrule [assoc])
@@ -75,11 +76,12 @@ Application for simple chat REPL.
     (let [arglist (shlex.split buffer.text)
           method (first arglist)
           ;; strip leading : from kws, so :key -> "key"
+          ;; and mangle kw
           kwargs (dfor [k v] (pairwise (rest arglist))
-                   (re.sub "^:" "" k) v)]
-      (assoc kwargs "chat_id" (:chat-id kwargs state.chat-id)) ; default to current chat
+                   (mangle (re.sub "^:" "" k)) v)]
+      (assoc kwargs "chat" (:chat kwargs state.chat)) ; default to current chat
       (match method
-        "switch" (sync-await (set-chat-id :chat-id (:chat-id kwargs)))
+        "switch" (set-chat :chat (:chat kwargs))
         _ (sync-await (server-rpc method #** kwargs)))))
   None)
   
@@ -106,7 +108,7 @@ Application for simple chat REPL.
 (setv kb (KeyBindings))
 
 (setv status-field (Label :text "" :style "class:reverse"))
-(setv chat-id-field (Label :text "" :align WindowAlign.CENTER :style "class:reverse"))
+(setv title-field (Label :text "" :align WindowAlign.CENTER :style "class:reverse"))
 (setv mode-field (Label :text "" :align WindowAlign.RIGHT :style "class:reverse"))
 (setv output-field (TextArea :text ""
                              :wrap-lines True
@@ -131,12 +133,13 @@ Application for simple chat REPL.
 
     (let [ptk-style (style-from-pygments-cls (get-style-by-name (:style state.cfg "friendly_grayscale")))]
       (setv container (HSplit [
-                               (VSplit [status-field chat-id-field mode-field])
+                               (VSplit [status-field title-field mode-field])
                                ;(HorizontalLine) 
                                output-field
                                (HorizontalLine) 
                                input-field]))
-      (setv chat-id-field.text f"{state.username} [{state.chat-id} @ {state.provider}]")
+      (setv title-field.text f"{state.username} [{state.chat} @ {state.provider}]")
+      (title-text)
       (output-text banner)
       (output-help)
       (.__init__ (super) :layout (Layout container :focused-element input-field)
@@ -145,14 +148,19 @@ Application for simple chat REPL.
                          :mouse-support True
                          :full-screen True))))
 
-(defn :async set-chat-id [* [chat-id None]]
+(defn set-chat [* [chat None]]
   "Set the chat id."
-  (when chat-id
-    (setv state.chat-id chat-id)
-    (setv chat-id-field.text f"{state.username} [{chat-id}]")
+  (when chat
+    (setv state.chat chat)
     (setv input-field.text "")
     (setv output-field.text "")
-    (await (server-rpc "messages" :chat-id chat-id))))
+    (sync-await (server-rpc "messages" :chat chat)))
+  (title-text))
+
+(defn title-text []
+  "Show the title."
+  (setv title-field.text f"{state.username} [{state.chat} @ {state.provider}] ({state.token-count})")
+  (invalidate))
 
 (defn output-clear []
   "Nuke the output window."
@@ -198,8 +206,6 @@ Application for simple chat REPL.
 ;;   interfere with normal operation.
 ;; ----------------------------------------------------------------------------
 
-;; TODO send general server-rpc commands
-
 (defn [(kb.add "c-q")] _ [event]
   "Pressing Ctrl-q  will cancel all tasks,
   including the REPLApp instance, and so
@@ -214,7 +220,7 @@ Application for simple chat REPL.
 (defn :async [(kb.add "c-r")] _ [event]
   "Request list of messages.
   On receipt, replace the output with it."
-  (await (server-rpc "messages" :chat-id state.chat-id)))
+  (await (server-rpc "messages" :chat state.chat)))
 
 (defn [(kb.add "s-tab")] _ [event]
   "Pressing Shift-tab will toggle server command mode."

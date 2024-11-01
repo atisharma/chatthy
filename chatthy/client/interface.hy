@@ -1,5 +1,5 @@
 "
-Functions that relate to output on the screen.
+The client's offered RPCs.
 "
 
 (require hyrule.argmove [-> ->>]) 
@@ -20,7 +20,9 @@ Functions that relate to output on the screen.
                                 sync-await
                                 output-clear
                                 output-text
-                                status-text])
+                                status-text
+                                title-text])
+(import chatthy.embeddings [token-count])
 
 
 ;; * status
@@ -43,8 +45,7 @@ Functions that relate to output on the screen.
 
 (defn print-input [line]
   "Print a line of input."
-  (sync-await (echo :result {"role" "user" "content" line}))
-  (output-text "\n"))
+  (sync-await (echo :result {"role" "user" "content" f"{line}"})))
 
 (defn print-exception [exception [s ""]]
   (output-text f"## Client exception\n```py3tb\n")
@@ -78,7 +79,7 @@ Functions that relate to output on the screen.
                         "server" f"## Server "
                         _ f"{(:role msg)}: ")]
       (output-text
-        (+ "\n" role-prompt (:content result) "\n")))))
+        (+ role-prompt (:content result) "\n\n")))))
 
 (defn :async [rpc] chunk [* result #** kwargs]
   "Print a chunk of a stream."
@@ -87,10 +88,13 @@ Functions that relate to output on the screen.
 (defn :async [rpc] messages [* result #** kwargs]
   "Clear the text and print all the messages."
   (output-clear)
+  (setv state.token-count (token-count result))
+  (title-text)
   (for [m result]
     (await (echo :result m))))
 
 (defn :async [rpc] chats [* result #** kwargs]
+  "Print the saved chats, which are received as a list."
   (output-text f"## Saved chats\n")
   (for [c result]
     (output-text f"- {c}\n"))
