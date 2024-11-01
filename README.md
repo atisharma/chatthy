@@ -2,8 +2,6 @@
 
 An asynchronous terminal server/multiple-client setup for conducting and managing chats with LLMs.
 
-## DONE
-
 - [x] can switch between Anthropic, OpenAI, tabbyAPI providers and models
 - [x] client/server RPC-type architecture
 - [x] message signing
