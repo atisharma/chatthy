@@ -13,6 +13,7 @@ Prompt-toolkit application for simple chat REPL.
 (import itertools [pairwise])
 
 (import asyncio)
+(import clipman)
 (import re)
 (import os)
 (import pansi [ansi])
@@ -24,7 +25,7 @@ Prompt-toolkit application for simple chat REPL.
 (import prompt_toolkit.layout [WindowAlign])
 (import prompt_toolkit.layout.dimension [Dimension])
 (import prompt-toolkit.document [Document])
-(import prompt-toolkit.filters [Condition is-multiline])
+(import prompt-toolkit.filters [Condition to-filter is-multiline has-focus])
 ;(import prompt-toolkit.formatted-text [FormattedText])
 (import prompt-toolkit.key-binding [KeyBindings])
 (import prompt_toolkit.key_binding.bindings.page_navigation [scroll_page_up scroll_page_down])
@@ -32,7 +33,8 @@ Prompt-toolkit application for simple chat REPL.
 (import prompt-toolkit.layout.layout [Layout])
 (import prompt-toolkit.patch-stdout [patch-stdout])
 ;(import prompt-toolkit.styles [Style])
-(import prompt-toolkit.widgets [Label HorizontalLine SearchToolbar TextArea])
+(import prompt-toolkit.widgets [Label HorizontalLine SearchToolbar TextArea Frame])
+(import prompt-toolkit.shortcuts [input-dialog])
 
 (import prompt-toolkit.styles.pygments [style-from-pygments-cls])
 (import prompt-toolkit.lexers [PygmentsLexer])
@@ -45,16 +47,27 @@ Prompt-toolkit application for simple chat REPL.
 
 ;; TODO sort what should be in here and in interface.hy
 
-;; * general functions
+;; TODO clipboard: output-field.buffer.selection-state.start ... end -> clipman.
+
+;; * handlers, general functions
 ;; ----------------------------------------------------------------------------
 
 (defn sync-await [coroutine]
   "Call a coroutine from inside a synchronous function,
   itself called from inside the async event loop."
-  (asyncio.run_coroutine_threadsafe
+  (asyncio.run-coroutine-threadsafe
     coroutine
     (asyncio.get-event-loop)))
+
+(defn quit []
+  "Gracefully quit - cancel all tasks."
+  (for [t (asyncio.all-tasks)]
+    :if (not (is t (asyncio.current-task)))
+    (t.cancel)))
   
+;; * handlers
+;; ----------------------------------------------------------------------------
+
 (defn accept-handler [buffer]
   "Dispatch to handler based on mode."
   (if input-field.command
@@ -81,21 +94,15 @@ Prompt-toolkit application for simple chat REPL.
                    (mangle (re.sub "^:" "" k)) v)]
       (assoc kwargs "chat" (:chat kwargs state.chat)) ; default to current chat
       (match method
-        "switch" (set-chat :chat (:chat kwargs))
+        "set" (match (first kwargs)
+                "chat" (set-chat :chat (:chat kwargs))
+                "prompt" (do
+                           (setv state.prompt-name (:prompt kwargs))
+                           (title-text)))
         _ (sync-await (server-rpc method #** kwargs)))))
   None)
-  
-(defn ansi-strip [s]
-  "Strip ANSI control codes."
-  (re.sub r"\033\[[0-9;]*m" "" s))
 
-(defn quit []
-  "Gracefully quit - cancel all tasks."
-  (for [t (asyncio.all-tasks)]
-    :if (not (is t (asyncio.current-task)))
-    (t.cancel)))
-
-;; * app state, text fields
+;; * setters, app state, text fields
 ;; ----------------------------------------------------------------------------
 
 (defn set-prompt [n w]
@@ -105,49 +112,6 @@ Prompt-toolkit application for simple chat REPL.
     input-field.command (ANSI f"{ansi.red}: ")
     :else (ANSI f"{ansi.green}> ")))
   
-(setv kb (KeyBindings))
-
-(setv status-field (Label :text "" :style "class:reverse"))
-(setv title-field (Label :text "" :align WindowAlign.CENTER :style "class:reverse"))
-(setv mode-field (Label :text "" :align WindowAlign.RIGHT :style "class:reverse"))
-(setv output-field (TextArea :text ""
-                             :wrap-lines True
-                             :lexer (PygmentsLexer MarkdownLexer)))
-
-(setv input-field (TextArea :multiline False
-                            :height (Dimension :min 1 :max 3)
-                            :wrap-lines True
-                            :get-line-prefix set-prompt
-                            :accept-handler accept-handler))
-(setv input-field.multiline False)
-(setv input-field.command False)
-(setv input-field.buffer.multiline (Condition (fn [] input-field.multiline)))
-  
-;; * the REPL app and functions
-;; ----------------------------------------------------------------------------
-
-(defclass REPLApp [Application]
-
-  (defn __init__ [self [banner ""]]
-    "Set up the full-screen application, widgets, style and layout."
-
-    (let [ptk-style (style-from-pygments-cls (get-style-by-name (:style state.cfg "friendly_grayscale")))]
-      (setv container (HSplit [
-                               (VSplit [status-field title-field mode-field])
-                               ;(HorizontalLine) 
-                               output-field
-                               (HorizontalLine) 
-                               input-field]))
-      (setv title-field.text f"{state.username} [{state.chat} @ {state.provider}]")
-      (title-text)
-      (output-text banner)
-      (output-help)
-      (.__init__ (super) :layout (Layout container :focused-element input-field)
-                         :key-bindings kb
-                         :style ptk-style
-                         :mouse-support True
-                         :full-screen True))))
-
 (defn set-chat [* [chat None]]
   "Set the chat id."
   (when chat
@@ -157,20 +121,64 @@ Prompt-toolkit application for simple chat REPL.
     (sync-await (server-rpc "messages" :chat chat)))
   (title-text))
 
-(defn title-text []
-  "Show the title."
-  (setv title-field.text f"{state.username} [{state.chat} @ {state.provider}] ({state.token-count})")
-  (invalidate))
+(clipman.init)
 
-(defn output-clear []
-  "Nuke the output window."
-  (setv output-field.text ""))
+(setv kb (KeyBindings))
 
+(setv status-field (Label :text "" :style "class:reverse"))
+(setv title-field (Label :text "" :align WindowAlign.CENTER :style "class:reverse"))
+(setv mode-field (Label :text "" :align WindowAlign.RIGHT :style "class:reverse"))
+(setv output-field (TextArea :text ""
+                             :wrap-lines True
+                             :lexer (PygmentsLexer MarkdownLexer)
+                             :read-only True))
+(setv input-field (TextArea :multiline False
+                            :height (Dimension :min 1 :max 3)
+                            :wrap-lines True
+                            :get-line-prefix set-prompt
+                            :accept-handler accept-handler))
+(setv input-field.multiline False)
+(setv input-field.command False)
+(setv input-field.buffer.multiline (Condition (fn [] input-field.multiline)))
+  
+;; * the REPL app and state-setting functions
+;; ----------------------------------------------------------------------------
+
+(defclass REPLApp [Application]
+
+  (defn __init__ [self] 
+    "Set up the full-screen application, widgets, style and layout."
+
+    (let [ptk-style (style-from-pygments-cls (get-style-by-name (:style state.cfg "friendly_grayscale")))
+          padding (Window :width 2)]
+      (setv container (HSplit [(VSplit [status-field title-field mode-field])
+                               (VSplit [padding output-field padding]) 
+                               ;(HorizontalLine) 
+                               input-field]))
+      (title-text)
+      (output-help)
+      (.__init__ (super) :layout (Layout container :focused-element input-field)
+                         :key-bindings kb
+                         :style ptk-style
+                         :mouse-support True
+                         :full-screen True))))
+
+(defn invalidate []
+  "Redraw the app."
+  (let [app (get-app-or-none)]
+    (when app
+      (.invalidate app))))
+  
 ;; * printing functions
 ;; ----------------------------------------------------------------------------
 
+(defn title-text []
+  "Show the title."
+  (setv title-field.text f"{state.username} - {state.chat} ({state.token-count}) [{state.prompt-name}@{state.provider}] ")
+  (invalidate))
+
 (defn output-text [output [replace False]]
-  "Append output to output buffer text.
+  "Append (replace) output to output buffer text.
   Replaces text of output buffer.
   Moves cursor to the end."
   (let [new-text (if replace
@@ -179,6 +187,14 @@ Prompt-toolkit application for simple chat REPL.
         tabbed-text (.replace new-text "\t" "    ")]
     (setv output-field.document (Document :text tabbed-text :cursor-position (len tabbed-text))))
   (invalidate))
+
+(defn output-help []
+  "Show the help text."
+  (output-text (slurp (+ (os.path.dirname __file__) "/client-help.md"))))
+
+(defn output-clear []
+  "Nuke the output window."
+  (setv output-field.text ""))
 
 (defn status-text [text]
   "Set the status field text. Parses ANSI codes."
@@ -190,21 +206,15 @@ Prompt-toolkit application for simple chat REPL.
   (setv mode-field.text (ANSI text))
   (invalidate))
 
-(defn invalidate []
-  "Redraw the app."
-  (let [app (get-app-or-none)]
-    (when app
-      (.invalidate app))))
-  
-(defn output-help []
-  "Show the help text."
-  (output-text (slurp (+ (os.path.dirname __file__) "/client-help.md"))
-               :replace False))
-
 ;; * key bindings
+;;
 ;;   Take care: many common things like ctrl-m (return) or ctrl-h (backspace)
 ;;   interfere with normal operation.
 ;; ----------------------------------------------------------------------------
+
+(defn [(kb.add "f1")] _ [event]
+  "Pressing F1 will display some help text."
+  (output-help))
 
 (defn [(kb.add "c-q")] _ [event]
   "Pressing Ctrl-q  will cancel all tasks,
@@ -217,13 +227,43 @@ Prompt-toolkit application for simple chat REPL.
 (defn [(kb.add "c-c")] _ [event]
   "Abandon the current generation.")
 
-(defn :async [(kb.add "c-r")] _ [event]
+#_(defn [(kb.add "c-p")] _ [event]
+    "Set the active prompt"
+    (with [(patch-stdout)] ; does it do anything?
+      (setv state.prompt-name (sync-await (.run-async (input-dialog :title "Set prompt name" :text "Please type the name of your prompt"))))))
+
+(defn :async [(kb.add "c-l")] _ [event]
   "Request list of messages.
   On receipt, replace the output with it."
   (await (server-rpc "messages" :chat state.chat)))
+  ;(invalidate))
 
-(defn [(kb.add "s-tab")] _ [event]
-  "Pressing Shift-tab will toggle server command mode."
+(defn [(kb.add "home")] _ [event]
+  "Pressing HOME will scroll the output to the start."
+  (event.app.layout.focus output-field.window)
+  (setv output-field.document (Document :text output-field.text :cursor-position 0)))
+
+(defn [(kb.add "end")] _ [event]
+  "Pressing END will scroll the output to the end."
+  (event.app.layout.focus output-field.window)
+  (setv output-field.document (Document :text output-field.text :cursor-position (len output-field.text))))
+
+(defn [(kb.add "pageup") (kb.add "c-b")] _ [event]
+  "Pressing PGUP or Ctrl-b will scroll the output backwards."
+  (event.app.layout.focus output-field.window)
+  (scroll_page_up event))
+
+(defn [(kb.add "pagedown") (kb.add "c-f")] _ [event]
+  "Pressing PGDOWN or Ctrl-f will scroll the output forwards."
+  (event.app.layout.focus output-field.window)
+  (scroll_page_down event))
+  
+;; * input-field key bindings
+;; ----------------------------------------------------------------------------
+
+(defn [(kb.add "tab")] _ [event]
+  "Pressing tab will toggle server command mode."
+  (event.app.layout.focus input-field)
   (let [term (get-terminal-size)]
     (if input-field.command
       (do ;; -> chat mode
@@ -233,42 +273,32 @@ Prompt-toolkit application for simple chat REPL.
         (mode-text "command")
         (setv input-field.command True)))))
 
-;; TODO home, end
-(defn [(kb.add "pageup") (kb.add "c-b")] _ [event]
-  "Pressing PGUP or Ctrl-b will scroll the output backwards."
-  (event.app.layout.focus output-field.window)
-  (scroll_page_up event)
+(defn [(kb.add "s-tab" :filter (has-focus input-field))] _ [event]
+  "Pressing shift-tab will toggle focus between input and output."
+  (event.app.layout.focus output-field))
+
+(defn [(kb.add "s-tab" :filter (has-focus output-field))] _ [event]
+  "Pressing shift-tab will toggle focus between input and output."
   (event.app.layout.focus input-field))
 
-(defn [(kb.add "pagedown") (kb.add "c-f")] _ [event]
-  "Pressing PGDOWN or Ctrl-f will scroll the output forwards."
-  (event.app.layout.focus output-field.window)
-  (scroll_page_down event)
-  (event.app.layout.focus input-field))
-  
-(defn [(kb.add "escape" "m")] _ [event]
+(defn [(kb.add "escape" "m" :filter input-field.buffer.multiline)] _ [event]
   "Pressing Escape-m will toggle multi-line input."
   (let [term (get-terminal-size)]
-    (if input-field.multiline
-      (do ;; -> single-line
-        (mode-text "")
-        (setv input-field.window.height (Dimension :min 1 :max 3))
-        (setv input-field.multiline False))
-      (do ;; -> multi-line
-        (mode-text "multiline")
-        (setv input-field.window.height (Dimension (// term.lines 2)))
-        (setv input-field.multiline True)))))
+    ;; -> single-line
+    (mode-text "")
+    (setv input-field.window.height (Dimension :min 1 :max 3))
+    (setv input-field.multiline False)))
 
-(defn [(kb.add "f1")] _ [event]
-  "Pressing F1 will display some help text."
-  (output-help))
+(defn [(kb.add "escape" "m" :filter (Condition (fn [] (not input-field.multiline))))] _ [event]
+  "Pressing Escape-m will toggle multi-line input."
+  (let [term (get-terminal-size)]
+    ;; -> multi-line
+    (mode-text "multiline")
+    (setv input-field.window.height (Dimension (// term.lines 2)))
+    (setv input-field.multiline True)))
 
 ;; * instantiate the singleton
 ;; ----------------------------------------------------------------------------
 
-(setv app (REPLApp :banner "
-  ┏┓┓     ┓   
-  ┃ ┣┓┏┓╋╋┣┓┓┏
-  ┗┛┛┗┗┻┗┗┛┗┗┫
-             ┛"))
+(setv app (REPLApp))
 

@@ -23,19 +23,20 @@ classifiers = [
     "Programming Language :: Lisp"
 ]
 dependencies = [
+    "clipman",
     "hy",
-    "hyrule",
     "hyjinx",
+    "hyrule",
     "pansi",
-    "tiktoken",
-    "toolz",
     "platformdirs",
     "prompt_toolkit",
-    "pygments"
+    "pygments",
+    "tiktoken",
+    "toolz"
 ]
 
 [project.optional-dependencies]
-server = ["ecdsa", "pyzmq", "zstandard", "msgpack", "openai", "anthropic"]
+server = ["hyjinx[llm]", "hyjinx[zmq]", "tabulate"]
 
 [project.urls]
 Repository = "https://github.com/atisharma/chatthy"

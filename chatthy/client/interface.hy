@@ -33,10 +33,10 @@ The client's offered RPCs.
   (try
     (let [age (- (time) (:server-time _status 0))]
       (status-text (if (> age 15)
-                     f"NO REPLY"
+                     f"no response from server"
                      (:result _status))))
     (except [e [BaseException]]
-      (status-text f"CONFUSING STATUS: {(str status)} {(str e)}"))))
+      (status-text f"confusing status: {(str status)} {(str e)}"))))
 
 (setv _status {"result" "Connecting"})
 

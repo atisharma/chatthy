@@ -19,6 +19,7 @@ Manage the client's shared state.
 (setv chat (:chat cfg "default"))
 (setv username (:username cfg "Anon"))
 (setv provider (:provider cfg None))
+(setv prompt-name "default")
 
 ;; Global vars
 ;; -----------------------------------------------------------------------------

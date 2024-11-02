@@ -13,7 +13,7 @@ Chats and account details are stored as json files.
 
 (import functools [cache])
 (import json)
-(import os [unlink])
+(import os [unlink rename])
 (import pathlib [Path])
 (import platformdirs [user-config-dir])
 (import shutil [rmtree])
@@ -64,6 +64,12 @@ Chats and account details are stored as json files.
   "List chats available to a user."
   (lfor f (filenames f"{chats_dir}/{username}")
     (. (Path f) stem)))
+
+(defmethod rename-chat [#^ str username #^ str chat #^ str to]
+  "Move the file associated with `chat` to `to`."
+  (rename
+    f"{chats_dir}/{username}/{chat}.json"
+    f"{chats_dir}/{username}/{to}.json"))
 
 ;; accounts and identity
 ;; key is username

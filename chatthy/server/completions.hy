@@ -2,10 +2,40 @@
 Chat completion functions.
 "
 
-(require hyjinx.macros [defmethod]) 
+(require hyrule [of])
+(require hyjinx [defmethod])
 
-(import hyjinx [llm first config])
+(import hyjinx [llm first first last config hash-id])
 
+(import chatthy.embeddings [token-count])
+(import chatthy.server.state [cfg])
+
+
+(defn truncate [messages * [dropped []] [space (:max-tokens cfg 600)]]
+  "Shorten the chat history if it gets too long, in which case
+  split it and return two lists, the kept messages, and the dropped messages (in pairs).
+  Use `space` to preserve space for new output or other messages that are not
+  to be dropped.
+  Returns `[messages, dropped]`."
+  (let [context-length (:context-length cfg 30000)
+        system-msg (when (= (:role (first messages) "system")
+                            (first messages)))
+        ;; we assume alternating pairs, 
+        chat-msgs (lfor m messages
+                    :if (not (= (:role m) "system"))
+                    m)
+        ;; need enough space to include chat msgs + system msg + new text
+        truncation-length (- context-length space)
+        token-length (token-count messages)]
+    (if (> token-length truncation-length)
+      ;; if too long, move the first two non-system messages to the discard list
+      ;; and recurse.
+      (let [kept (cut chat-msgs 2 None)
+            new-dropped (+ dropped (cut chat-msgs 0 2))]
+        (if system-msg
+          (truncate (+ [system-msg] kept) :dropped new-dropped :space space)
+          (truncate kept :dropped new-dropped :space space)))
+      [messages dropped])))
 
 (defn provider [client-name]
   "Get the API client object from the config."

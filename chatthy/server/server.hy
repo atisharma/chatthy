@@ -25,9 +25,10 @@ Implements server side of async DEALER-ROUTER pattern.
 (import zmq)
 (import zmq.asyncio)
 
-(import chatthy.server.completions [stream-completion])
+(import chatthy.server.completions [stream-completion truncate])
+(import chatthy.embeddings [token-count])
 (import chatthy.server.state [cfg
-                              get-chat set-chat delete-chat list-chats
+                              get-chat set-chat delete-chat rename-chat list-chats
                               get-account set-account update-account
                               get-pubkey])
 
@@ -42,17 +43,23 @@ Implements server side of async DEALER-ROUTER pattern.
 ;; * The server's RPC methods, offered to the client
 ;; -----------------------------------------------------------------------------
 
+;; TODO rename and switch to chat
+;; TODO instead of no docstring, maybe skip advertising private _fn-fname RPCs
+
 (defn :async [rpc] status [* sid #** kwargs]
+  ;; no docstring so it doesn't advertise to clients
   ;; regular status update
   (await (client-rpc sid "status" :result f"idle")))
 
 (defn :async [rpc] echo [* sid result #** kwargs]
+  ;; no docstring so it doesn't advertise to clients
   ;; send a chat message to the client
   (await (client-rpc sid
                      "echo"
                      :result {"role" "server" "content" result})))
 
 (defn :async [rpc] messages [* sid username chat #** kwargs]
+  ;; no docstring so it doesn't advertise to clients
   ;;Send all the user's messages.
   (await (client-rpc sid
                      "messages"
@@ -60,17 +67,23 @@ Implements server side of async DEALER-ROUTER pattern.
 
 (defn :async [rpc] account [* sid username #** kwargs]
   "Show account details."
-  (await (echo :sid sid
-               :result (+ f"\naccount\n{username}\n\n"
-                          (tabulate (.items (get-account username)))))))
+  (let [d-account (get-account username)]
+    (.pop d-account "prompts" None)
+    (await (echo :sid sid
+                 :result (+ f"account {username}\n\n"
+                            (tabulate (.items d-account)
+                                      :maxcolwidths [None 60]))))))
 
-(defn :async [rpc] system [* sid username [prompt None] #** kwargs]
-  "Sets the system prompt for that user."
-  (when prompt
-    (update-account username :system prompt))
-  (await (echo :sid sid
-               :result (+ "prompt\n\n"
-                          (:system (get-account username) (:system cfg))))))
+(defn :async [rpc] prompts [* sid username [name None] [prompt None] #** kwargs]
+  "Gets/sets a named system prompt for a user. With no args, list them."
+  (let [prompts (:prompts (get-account username) {})]
+    (if (and name prompt)
+      (update-account username :prompts (| prompts {name prompt}))
+      (await (echo :sid sid
+                   :result (+ "prompts\n\n"
+                              (tabulate (list (.items prompts))
+                                        :headers ["name" "prompt text"]
+                                        :maxcolwidths [None 60])))))))
 
 (defn :async [rpc] chats [* sid username #** kwargs]
   "List the user's saved chats."
@@ -78,12 +91,16 @@ Implements server side of async DEALER-ROUTER pattern.
                      "chats"
                      :result (list-chats username))))
 
+(defn :async [rpc] rename [* sid username chat to #** kwargs]
+  "Rename the user's chat."
+  (rename-chat username chat to))
+
 (defn :async [rpc] providers [* sid #** kwargs]
   "List the providers available to clients."
   (await (echo :sid sid
-               :result (+ "providers available:\n\n"
-                          (tabulate
-                            (sorted (list (.keys (:providers cfg)))))))))
+               :result (.join "\n"
+                         ["providers available:\n"
+                          #* (sorted (list (.keys (:providers cfg))))]))))
 
 (defn :async [rpc] commands [* sid #** kwargs]
   "List the commands advertised to clients."
@@ -106,24 +123,28 @@ Implements server side of async DEALER-ROUTER pattern.
                             :headers ["command" "kwargs" "doc"])))))
 
 (defn :async [rpc] destroy [* sid username chat]
-  "Destroy the whole chat."
+  "Destroy the whole chat (default current chat)."
   (delete-chat username chat)
   (await (messages :sid sid :username username :chat chat))
   (await (client-rpc sid "info" :result "Chat destroyed.")))
 
 (defn :async [rpc] undo [* sid username chat #** kwargs]
-  "Destroy the last message pair."
+  "Destroy the last message pair (default current chat)."
   (let [messages (cut (get-chat username chat) -2)]
     (set-chat messages username chat))
   (await (messages :sid sid :username username :chat chat)))
 
-(defn :async [rpc] chat [* sid username chat line provider #** kwargs]
+(defn :async [rpc] chat [* sid username chat prompt-name line provider #** kwargs]
+  ;; no docstring so it doesn't advertise to clients
   ;; Send the streamed reply in batched chunks.
   (let [reply ""
         chunk ""
-        system-msg {"role" "system" "content" (:system (get-account username) (:system cfg))}
+        prompts (:prompts (get-account username))
+        system-prompt (.get prompts prompt-name (:system cfg))
+        system-msg {"role" "system" "content" system-prompt}
         usr-msg {"role" "user" "content" line "timestamp" (time)}
-        messages (get-chat username chat)]
+        all-messages (get-chat username chat)
+        [messages dropped] (truncate all-messages :space (+ (:max-tokens cfg 600) (token-count system-prompt)))]
     (for [chunk (map (fn [xs] (.join "" xs))
                      (batched (stream-completion provider [system-msg #* messages usr-msg] #** kwargs)
                               (:batch cfg 2)))]
@@ -131,9 +152,9 @@ Implements server side of async DEALER-ROUTER pattern.
       (await (client-rpc sid "status" :result "streaming"))
       (await (client-rpc sid "chunk" :result chunk)))
     (await (client-rpc sid "chunk" :result "\n\n"))
-    (.append messages usr-msg)
-    (.append messages {"role" "assistant" "content" reply "timestamp" (time)})
-    (set-chat messages username chat))
+    (.append all-messages usr-msg)
+    (.append all-messages {"role" "assistant" "content" reply "timestamp" (time)})
+    (set-chat all-messages username chat))
   (await (client-rpc sid "status" :result "ready")))
 
 ;; * RPC message handling stuff

@@ -1,29 +1,39 @@
 
-# Client commands
+  ┏┓┓     ┓
+  ┃ ┣┓┏┓╋╋┣┓┓┏
+  ┗┛┛┗┗┻┗┗┛┗┗┫
+             ┛
 
-    F1                show this help text
-    Ctrl-q            quit
-    Shift-tab         enter a command
-
-# Client input bindings
-
-    Alt-m             toggle multiline input
+# Client bindings
 
 Most readline-compatible bindings are implemented.
 
-# Client chat view and output
+## Input bindings
 
-    Ctrl-b / PGUP     scroll output up one page
-    Ctrl-f / PGDOWN   scroll output down one page
-    Ctrl-r            refresh the output window
-    Ctrl-c            cancel generation (not implemented)
+    F1                  show this help text
+    Ctrl-q              quit
+    Alt-m               toggle multiline input
+    Shift-Tab           toggle focus between input and output
+    Tab                 enter a command
 
-    switch :chat new-chat-name
-                      switch to another chat
+## Output bindings
 
-# Server commands (Shift-tab)
+    Ctrl-b / PGUP       scroll output up one page
+    Ctrl-f / PGDOWN     scroll output down one page
+    Ctrl-l              refresh the output window
+    Ctrl-c              cancel generation (not implemented)
 
-    chats             list existing chats
-    commands          list all advertised server commands
-    destroy           destroy the current chat
-    undo              destroy the last message pair in the chat
+# Commands (Shift-Tab)
+
+## Client commands
+
+    set :chat new-chat-name     switch to another chat
+    set :prompt prompt-name     switch to saved system prompt
+
+## Server commands (a selection)
+
+    commands            list all advertised server commands
+    chats               list existing chats
+    destroy             destroy the current chat
+    undo                destroy the last message pair in the chat
+
