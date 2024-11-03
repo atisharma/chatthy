@@ -13,9 +13,9 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 
 - [x] basic chat persistence and management
 - [x] set, switch to saved system prompts (personalities)
-- [ ] profiles? (username x personalities -> sets of chats)
 - [x] chat truncation to token length
-- [ ] rename chat
+- [x] rename chat
+- [ ] profiles? (username x personalities -> sets of chats)
 
 
 ### functionality
@@ -23,8 +23,9 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [ ] summaries (see llama-farm, unslop templates)
 - [ ] inject from sources (see llama-farm)
 - [ ] templates for standard instruction requests (hyjinx? llm-utils?)
-- [ ] integrate with other things like RAG / vdb
-- [ ] tools (merge from llama-farm)
+- [ ] integrate with vdb
+- [ ] integrate with RAG
+- [ ] tools (evolve from llama-farm)
 - [ ] iterative workflows (refer to llama-farm)
 
 

@@ -19,14 +19,20 @@ Chats and account details are stored as json files.
 (import shutil [rmtree])
 (import time [time])
 
+(import zmq)
+(import zmq.asyncio)
 
 ;; TODO use config dir
 ;; (file-exists (Path (user-config-dir "chatthy") fname))
 
 ;; TODO proper Path objects so it works on non-unix
 
-;; TODO rename chat
 
+;; zmq server state
+;; -----------------------------------------------------------------------------
+
+(setv context (zmq.asyncio.Context))
+(setv socket (.socket context zmq.ROUTER))
 
 ;; Identify and create the storage directory
 ;; -----------------------------------------------------------------------------
