@@ -17,10 +17,11 @@ The main REPL where we read output and issue commands.
 (import chatthy.client.client [send recv handoff server-rpc])
 (import chatthy.client.interface [app
                                   status echo
-                                  show-status
+                                  update-status
                                   print-input
                                   print-exception])
 
+;; * The REPL processes
 ;; -----------------------------------------------------------------------------
 
 (defn :async get-server-status [[delay 10]]
@@ -36,7 +37,7 @@ The main REPL where we read output and issue commands.
   "Loop to display most recent status from the server."
   (while True
     (try
-      (show-status)
+      (update-status)
       (await (asyncio.sleep delay))
       (except [e [Exception]]
         (print-exception e)))))

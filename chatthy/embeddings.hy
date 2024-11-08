@@ -8,6 +8,7 @@ because it is fast, modern and does not require pytorch.
 (require hyrule [of])
 (require hyjinx [defmethod])
 
+(import functools [lru-cache])
 (import tiktoken)
 
 ;; TODO image handling
@@ -34,5 +35,5 @@ because it is fast, modern and does not require pytorch.
 
 (defclass APITokenizer []
   "Remote endpoint embeddings."
-
+  ;; TODO
   (defn encode [self text]))

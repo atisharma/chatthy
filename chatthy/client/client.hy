@@ -48,8 +48,8 @@ Implements client side of async ROUTER-DEALER pattern.
     (except [zmq.error.Again])))
 
 (defn :async server-rpc [method #** kwargs]
-  "Send a message payload with method and username."
+  "Send a message payload with method and profile."
   (await (send {"method" method
-                "username" state.username
+                "profile" state.profile
                 #** kwargs})))
   

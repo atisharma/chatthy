@@ -17,14 +17,15 @@ Manage the client's shared state.
 
 (setv cfg (config "client.toml"))
 (setv chat (:chat cfg "default"))
-(setv username (:username cfg "Anon"))
+(setv profile (:profile cfg "Anon"))
 (setv provider (:provider cfg None))
-(setv prompt-name "default")
+(setv prompt-name (:prompt cfg "default"))
 
 ;; Global vars
 ;; -----------------------------------------------------------------------------
 
 (setv token-count 0)
+(setv workspace-count 0)
 
 ;; Queues
 ;; -----------------------------------------------------------------------------

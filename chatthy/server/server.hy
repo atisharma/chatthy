@@ -10,9 +10,11 @@ Implements server side of async DEALER-ROUTER pattern.
 (import hyjinx.wire [unwrap handoff])
 
 (import asyncio)
+(import re)
 (import sys)
 (import traceback [format-exception])
 
+(import fvdb [similar])
 (import chatthy.server.state [cfg socket get-pubkey])
 (import chatthy.server.commands [client-rpc]) ; this also registers the RPC commands
 
@@ -31,8 +33,8 @@ Implements server side of async DEALER-ROUTER pattern.
         (try
           (let [msg (unwrap zmsg)
                 payload (:payload msg)
-                username (:username (:payload msg) "")
-                pub-key (get-pubkey username (:public-key msg None)) ;; use the stored public key if it exists
+                profile (:profile (:payload msg) "")
+                pub-key (get-pubkey profile (:public-key msg None)) ;; use the stored public key if it exists
                 signature (:signature msg "")
                 client-time (:sender-time msg Inf)
                 expected-hash (hash-id (+ (str (:sender-time msg))

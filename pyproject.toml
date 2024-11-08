@@ -32,11 +32,12 @@ dependencies = [
     "prompt_toolkit",
     "pygments",
     "tiktoken",
-    "toolz"
+    "toolz",
+    "trag"
 ]
 
 [project.optional-dependencies]
-server = ["hyjinx[llm]", "hyjinx[zmq]", "tabulate"]
+server = ["hyjinx[llm]", "hyjinx[zmq]", "tabulate", "fvdb"]
 
 [project.urls]
 Repository = "https://github.com/atisharma/chatthy"
@@ -49,7 +50,7 @@ readme = {file = "README.md", content-type = "text/markdown"}
 version = {attr = "chatthy.__version__"}
 
 [tool.setuptools.package-data]
-"*" = ["*.hy", "*.md", "*.json"]
+"*" = ["*.hy", "*.md", "*.json", "*.toml"]
 
 # ... other project metadata fields as listed in:
 #     https://packaging.python.org/en/latest/guides/writing-pyproject-toml/

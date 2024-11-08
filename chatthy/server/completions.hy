@@ -5,7 +5,7 @@ Chat completion functions.
 (require hyrule [of])
 (require hyjinx [defmethod])
 
-(import hyjinx [llm first first last config hash-id])
+(import hyjinx [llm first first last config hash-id coroutine])
 
 (import chatthy.embeddings [token-count])
 (import chatthy.server.state [cfg])
@@ -18,18 +18,22 @@ Chat completion functions.
   to be dropped.
   Returns `[messages, dropped]`."
   (let [context-length (:context-length cfg 30000)
-        system-msg (when (= (:role (first messages) "system")
-                            (first messages)))
-        ;; we assume alternating pairs, 
+        ;; Any system message must be in the first position
+        ;; or will be silently discarded.
+        system-msg (when (and messages
+                              (= (:role (first messages))
+                                 "system"))
+                     (:content (first messages)))
+        ;; We assume alternating pairs, 
         chat-msgs (lfor m messages
                     :if (not (= (:role m) "system"))
                     m)
-        ;; need enough space to include chat msgs + system msg + new text
+        ;; and need enough space to include chat msgs + system msg + new text.
         truncation-length (- context-length space)
         token-length (token-count messages)]
     (if (> token-length truncation-length)
-      ;; if too long, move the first two non-system messages to the discard list
-      ;; and recurse.
+      ;; If the total is too long, move the first two non-system messages
+      ;; to the discard list and recurse.
       (let [kept (cut chat-msgs 2 None)
             new-dropped (+ dropped (cut chat-msgs 0 2))]
         (if system-msg
@@ -52,6 +56,11 @@ Chat completion functions.
     (when model
      (llm.model-load client model))
     client))
+
+;; FIXME doesn't work
+(defn :async async-stream-completion [#* args #** kwargs]
+  "Async generate a streaming completion using the router API endpoint."
+  (await (coroutine stream-completion #* args #** kwargs)))
 
 (defmethod stream-completion [#^ str client-name #^ list messages #** kwargs]
   "Generate a streaming completion using the router API endpoint."

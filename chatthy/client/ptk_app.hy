@@ -2,14 +2,11 @@
 Prompt-toolkit application for simple chat REPL.
 "
 
-;; TODO cut, paste
-;; TODO Ctrl-C cancel generation
-
 (import hy [mangle])
 (require hyrule [defmain])
 
 (import hyrule [assoc])
-(import hyjinx.lib [first rest slurp])
+(import hyjinx.lib [first rest slurp sync-await])
 (import itertools [pairwise])
 
 (import asyncio)
@@ -19,6 +16,8 @@ Prompt-toolkit application for simple chat REPL.
 (import pansi [ansi])
 (import shutil [get-terminal-size])
 (import shlex)
+
+(import clipman)
 
 (import prompt-toolkit [ANSI])
 (import prompt-toolkit.application [Application get-app-or-none])
@@ -45,19 +44,11 @@ Prompt-toolkit application for simple chat REPL.
 (import chatthy.client.client [server-rpc])
 
 
-;; TODO sort what should be in here and in interface.hy
-
-;; TODO clipboard: output-field.buffer.selection-state.start ... end -> clipman.
+;; TODO Ctrl-C cancel generation -- send a message, set a flag, check for each chunk.
+;; TODO allow click to focus
 
 ;; * handlers, general functions
 ;; ----------------------------------------------------------------------------
-
-(defn sync-await [coroutine]
-  "Call a coroutine from inside a synchronous function,
-  itself called from inside the async event loop."
-  (asyncio.run-coroutine-threadsafe
-    coroutine
-    (asyncio.get-event-loop)))
 
 (defn quit []
   "Gracefully quit - cancel all tasks."
@@ -65,6 +56,7 @@ Prompt-toolkit application for simple chat REPL.
     :if (not (is t (asyncio.current-task)))
     (t.cancel)))
   
+
 ;; * handlers
 ;; ----------------------------------------------------------------------------
 
@@ -84,7 +76,6 @@ Prompt-toolkit application for simple chat REPL.
 (defn command-input-handler [buffer]
   "Send server RPC from the input buffer."
   (setv input-field.command False)
-  (mode-text "")
   (when buffer.text
     (let [arglist (shlex.split buffer.text)
           method (first arglist)
@@ -94,18 +85,32 @@ Prompt-toolkit application for simple chat REPL.
                    (mangle (re.sub "^:" "" k)) v)]
       (assoc kwargs "chat" (:chat kwargs state.chat)) ; default to current chat
       (match method
-        "set" (match (first kwargs)
-                "chat" (set-chat :chat (:chat kwargs))
-                "prompt" (do
-                           (setv state.prompt-name (:prompt kwargs))
-                           (title-text)))
-        _ (sync-await (server-rpc method #** kwargs)))))
+        "load" (match (first kwargs)
+                 "chat" (set-chat :chat (:chat kwargs))
+                 "input" (input-text (slurp (:file kwargs)) :multiline True)
+                 "ws" (sync-await (server-rpc "ws"
+                                              :provider state.provider
+                                              :load (:ws kwargs)
+                                              :text (.strip (slurp (:ws kwargs)))
+                                              #** kwargs))
+                 "profile" (do
+                             (setv state.profile (:profile kwargs))
+                             (title-text))
+                 "provider" (do
+                              (setv state.provider (:provider kwargs))
+                              (title-text))
+                 "prompt" (do
+                            (setv state.prompt-name (:prompt kwargs))
+                            (title-text)))
+        _ (sync-await (server-rpc method :provider state.provider :prompt-name state.prompt-name #** kwargs)))))
+  (mode-text)
   None)
+
 
 ;; * setters, app state, text fields
 ;; ----------------------------------------------------------------------------
 
-(defn set-prompt [n w]
+(defn set-input-prompt [n w]
   "Set the input field text prompt."
   (cond
     n "⋮ "
@@ -135,12 +140,13 @@ Prompt-toolkit application for simple chat REPL.
 (setv input-field (TextArea :multiline False
                             :height (Dimension :min 1 :max 3)
                             :wrap-lines True
-                            :get-line-prefix set-prompt
+                            :get-line-prefix set-input-prompt
                             :accept-handler accept-handler))
 (setv input-field.multiline False)
 (setv input-field.command False)
 (setv input-field.buffer.multiline (Condition (fn [] input-field.multiline)))
   
+
 ;; * the REPL app and state-setting functions
 ;; ----------------------------------------------------------------------------
 
@@ -169,13 +175,24 @@ Prompt-toolkit application for simple chat REPL.
     (when app
       (.invalidate app))))
   
+
 ;; * printing functions
 ;; ----------------------------------------------------------------------------
 
 (defn title-text []
   "Show the title."
-  (setv title-field.text f"{state.username} - {state.chat} ({state.token-count}) [{state.prompt-name}@{state.provider}] ")
+  (setv title-field.text f"{state.profile} - {state.chat} ({state.token-count}+{state.workspace-count}) [{state.prompt-name}@{state.provider}] ")
   (invalidate))
+
+(defn input-text [text * [multiline False] [command False]]
+  "Set the input field text for editing."
+  (let [term (get-terminal-size)]
+    (setv input-field.command command)
+    (setv input-field.multiline multiline)
+    (if multiline
+      (setv input-field.window.height (Dimension (// term.lines 2)))
+      (setv input-field.window.height (Dimension :max 3 :min 1)))
+    (setv input-field.document (Document :text (.strip text) :cursor-position 0))))
 
 (defn output-text [output [replace False]]
   "Append (replace) output to output buffer text.
@@ -201,12 +218,24 @@ Prompt-toolkit application for simple chat REPL.
   (setv status-field.text (ANSI text))
   (invalidate))
 
-(defn mode-text [text]
+(defn mode-text []
   "Set the mode field text. Parses ANSI codes."
-  (setv mode-field.text (ANSI text))
+  (cond
+    (and input-field.multiline input-field.command)
+    (setv mode-field.text "command multiline")
+
+    input-field.command
+    (setv mode-field.text "command")
+
+    input-field.multiline
+    (setv mode-field.text "multiline")
+
+    :else
+    (setv mode-field.text ""))
   (invalidate))
 
-;; * key bindings
+
+;; * global key bindings
 ;;
 ;;   Take care: many common things like ctrl-m (return) or ctrl-h (backspace)
 ;;   interfere with normal operation.
@@ -230,7 +259,10 @@ Prompt-toolkit application for simple chat REPL.
 #_(defn [(kb.add "c-p")] _ [event]
     "Set the active prompt"
     (with [(patch-stdout)] ; does it do anything?
-      (setv state.prompt-name (sync-await (.run-async (input-dialog :title "Set prompt name" :text "Please type the name of your prompt"))))))
+      (setv state.prompt-name
+            (sync-await
+              (.run-async
+                (input-dialog :title "Set prompt name" :text "Please type the name of your prompt"))))))
 
 (defn :async [(kb.add "c-l")] _ [event]
   "Request list of messages.
@@ -258,44 +290,54 @@ Prompt-toolkit application for simple chat REPL.
   (event.app.layout.focus output-field.window)
   (scroll_page_down event))
   
-;; * input-field key bindings
-;; ----------------------------------------------------------------------------
-
 (defn [(kb.add "tab")] _ [event]
-  "Pressing tab will toggle server command mode."
+  "Pressing tab will toggle command mode."
   (event.app.layout.focus input-field)
   (let [term (get-terminal-size)]
     (if input-field.command
       (do ;; -> chat mode
-        (mode-text "")
-        (setv input-field.command False))
+        (setv input-field.command False)
+        (mode-text))
       (do ;; -> command mode
-        (mode-text "command")
-        (setv input-field.command True)))))
+        (setv input-field.command True)
+        (mode-text)))))
+
+
+;; * input-field key bindings
+;; ----------------------------------------------------------------------------
 
 (defn [(kb.add "s-tab" :filter (has-focus input-field))] _ [event]
   "Pressing shift-tab will toggle focus between input and output."
   (event.app.layout.focus output-field))
 
+(defn [(kb.add "escape" "m" :filter input-field.buffer.multiline)] _ [event]
+  "Pressing Escape-m (Alt-m) will toggle multi-line input."
+  ;; -> single-line
+  (setv input-field.window.height (Dimension :min 1 :max 3))
+  (setv input-field.multiline False)
+  (mode-text))
+
+(defn [(kb.add "escape" "m" :filter (Condition (fn [] (not input-field.multiline))))] _ [event]
+  "Pressing Escape-m (Alt-m) will toggle multi-line input."
+  (let [term (get-terminal-size)]
+    ;; -> multi-line
+    (setv input-field.window.height (Dimension (// term.lines 2)))
+    (setv input-field.multiline True)
+    (mode-text)))
+
+
+;; * output-field key bindings
+;; ----------------------------------------------------------------------------
+
 (defn [(kb.add "s-tab" :filter (has-focus output-field))] _ [event]
   "Pressing shift-tab will toggle focus between input and output."
   (event.app.layout.focus input-field))
 
-(defn [(kb.add "escape" "m" :filter input-field.buffer.multiline)] _ [event]
-  "Pressing Escape-m will toggle multi-line input."
-  (let [term (get-terminal-size)]
-    ;; -> single-line
-    (mode-text "")
-    (setv input-field.window.height (Dimension :min 1 :max 3))
-    (setv input-field.multiline False)))
+(defn [(kb.add "y" :filter (has-focus output-field))] _ [event]
+  "Pressing 'y' will send the output field selection to the clipboard."
+  (when output-field.buffer.selection-state
+    (clipman.copy (. (output-field.buffer.copy-selection) text))))
 
-(defn [(kb.add "escape" "m" :filter (Condition (fn [] (not input-field.multiline))))] _ [event]
-  "Pressing Escape-m will toggle multi-line input."
-  (let [term (get-terminal-size)]
-    ;; -> multi-line
-    (mode-text "multiline")
-    (setv input-field.window.height (Dimension (// term.lines 2)))
-    (setv input-field.multiline True)))
 
 ;; * instantiate the singleton
 ;; ----------------------------------------------------------------------------

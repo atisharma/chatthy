@@ -15,17 +15,19 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] set, switch to saved system prompts (personalities)
 - [x] chat truncation to token length
 - [x] rename chat
-- [ ] profiles? (username x personalities -> sets of chats)
+- [x] profiles (profile x personalities -> sets of chats)
 
 
 ### functionality
 
-- [ ] summaries (see llama-farm, unslop templates)
-- [ ] inject from sources (see llama-farm)
-- [ ] templates for standard instruction requests (hyjinx? llm-utils?)
-- [ ] integrate with vdb
-- [ ] integrate with RAG
-- [ ] tools (evolve from llama-farm)
+- [ ] client context workspace (load/drop files)
+- [ ] summaries and standard client instructions (trag)
+- [x] client inject from file
+- [.] client inject from other sources (trag)
+- [x] server use vdb context on request
+- [x] templates for standard instruction requests (trag)
+- [ ] (auto) tools (evolve from llama-farm -> trag)
+- [ ] server use vdb context at LLM will
 - [ ] iterative workflows (refer to llama-farm)
 
 
@@ -36,11 +38,11 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] syntax highlighting
 - [x] decent REPL
 - [x] REPL command mode
-- [.] inject from file
-- [ ] cut/copy from output (clipman)
+- [x] cut/copy from output
+- [x] client-side prompt editing
 - [ ] image sending
-- [ ] client-side chat/message editing
-- [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex)
+- [ ] client-side chat/message editing (how? temporarily set the input field history?)
+- [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex, pylatexenc).
 
 
 ### misc
@@ -56,26 +58,29 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 ### unallocated
 
 audio streaming ?
-
-
-### LLM-utils (all depend on LLM)
-
-summaries and text reduction (llama-farm.summaries) 
 workflows (tree of instruction templates)
-instruction templates (chasm_engine.instructions)
-RAG templates
 tasks
-tools
+
+arXiv paper -> latex / md
+pdf paper -> latex / md
+
+
+### trag
+
+summaries and text reduction
+instruction templates
+RAG templates
+sources
+tools?
 
 
 ### hyjinx
 
 streaming APIs (hyjinx.llm)
 zmq client/server abstraction (hyjinx.wire)
-sources (textfiles, url, arxiv, wikipedia, youtube) (llama-farm.sources, unslop.web) !
 
 
-### vdb (no llm required)
+### fvdb (no llm required)
 
 vdb
 split
@@ -86,4 +91,5 @@ embeddings
 
 REPL interface
 chat persistence, management
+prompt persistence, management
 

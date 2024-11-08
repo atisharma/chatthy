@@ -6,109 +6,187 @@ Chats and account details are stored as json files.
 
 (require hyrule.argmove [-> ->>])
 
+(import hyrule [assoc])
+
 (require hyjinx [defmethod])
 (import hyjinx [config mkdir
+                spit slurp
                 jload jsave jappend
                 filenames])
 
+(import asyncio)
 (import functools [cache])
 (import json)
 (import os [unlink rename])
 (import pathlib [Path])
 (import platformdirs [user-config-dir])
-(import shutil [rmtree])
+(import re)
+(import shutil [rmtree copyfile])
 (import time [time])
 
 (import zmq)
 (import zmq.asyncio)
 
+(import fvdb [faiss write])
+
 ;; TODO use config dir
 ;; (file-exists (Path (user-config-dir "chatthy") fname))
 
-;; TODO proper Path objects so it works on non-unix
+;; TODO Path objects so it works on non-unix
 
-
-;; zmq server state
+  
+;; * zmq server state
 ;; -----------------------------------------------------------------------------
+
 
 (setv context (zmq.asyncio.Context))
 (setv socket (.socket context zmq.ROUTER))
 
-;; Identify and create the storage directory
+
+;; * Identify and access the storage directory
 ;; -----------------------------------------------------------------------------
 
 (setv cfg (config "server.toml"))
 (setv storage-dir (:storage cfg "state"))
-(setv accounts-dir f"{storage_dir}/accounts")
-(setv chats-dir f"{storage_dir}/chats")
 
-(mkdir storage-dir)
-(mkdir accounts_dir)
-(mkdir chats_dir)
+(defn sanitize [profile]
+  "Lowercase profile name, no funny business."
+  (->> profile
+       (re.sub r"\W+" "")
+       (.lower)))
 
-;; chat persistence
-;; key is username, chat
+(defn profile-dir [#^ str profile #* args]
+  "Return the directory under which the profile's data is stored,
+  or its subdirs (via `args`)."
+  (let [pdir (Path storage-dir (sanitize profile) #* args)]
+    (.mkdir pdir :parents True :exist-ok True)
+    pdir))
+
+
+;; * workspace (files stuffed into the context)
+;; key is profile, filename
 ;; -----------------------------------------------------------------------------
 
-(defmethod get-chat [#^ str username #^ str chat]
-  "Retrieve the chat."
-  (or (jload f"{chats_dir}/{username}/{chat}.json") []))
+(defmethod get-ws [#^ str profile #^ (| str Path) fname]
+  "Return a file from the profile's workspace."
+  (slurp (Path (profile-dir profile "workspace") fname)))
 
-(defmethod set-chat [#^ list messages #^ str username #^ str chat]
-  "Store the chat."
-  (mkdir f"{chats_dir}/{username}")
-  (jsave messages f"{chats_dir}/{username}/{chat}.json")
-  messages)
+(defmethod write-ws
+  [#^ str profile
+   #^ (| str Path) fname
+   #^ str text]
+  "Return a file from the profile's workspace."
+  (let [p (str (Path (profile-dir profile "workspace") fname))]
+    (spit p text)))
 
-(defmethod delete-chat [#^ str username #^ str chat]
-  "Completely remove a chat."
+(defmethod drop-ws [#^ str profile #^ (| str Path) fname]
+  "Completely remove a file from the profile's workspace."
   (try
-    (unlink f"{chats_dir}/{username}/{chat}.json")
+    (unlink (Path (profile-dir profile "workspace") fname))
     (except [FileNotFoundError])))
   
-(defmethod list-chats [#^ str username]
-  "List chats available to a user."
-  (lfor f (filenames f"{chats_dir}/{username}")
-    (. (Path f) stem)))
-
-(defmethod rename-chat [#^ str username #^ str chat #^ str to]
-  "Move the file associated with `chat` to `to`."
+(defmethod rename-ws [#^ str profile #^ (| str Path) fname #^ str to]
+  "Move the file associated with `fname` to `to`."
   (rename
-    f"{chats_dir}/{username}/{chat}.json"
-    f"{chats_dir}/{username}/{to}.json"))
+    (Path (profile-dir profile "workspace") fname)
+    (Path (profile-dir profile "workspace") to)))
 
-;; accounts and identity
-;; key is username
+(defmethod list-ws [#^ str profile]
+  "List files available in a profile's workspace."
+  (lfor f (filenames (profile-dir profile "workspace"))
+    (. (Path f) name)))
+
+
+;; * Vector DB
+;; key is profile
 ;; -----------------------------------------------------------------------------
 
-(defmethod get-account [#^ str username]
-  (when username
-    (or (jload f"{accounts_dir}/{username}.json") {})))
+(setv vdbs {})
 
-(defmethod set-account [#^ dict account #^ str username]
-  (when username
-    (jsave account f"{accounts_dir}/{username}.json")
+(defn :async get-vdb [#^ str profile]
+  "Return the vdb for that profile.
+  Create one if it doesn't exist."
+  (let [p (sanitize profile)
+        vdb (.get vdbs p None)]
+    (if vdb
+      vdb ; use if it exists
+      (do ; or create a new one
+        (let [new-vdb (await (asyncio.to-thread faiss (profile-dir p "vdb")))]
+          (assoc vdbs p new-vdb)
+          (write new-vdb)
+          new-vdb)))))
+
+
+;; * chat persistence
+;; key is profile, chat
+;; -----------------------------------------------------------------------------
+
+(defmethod get-chat [#^ str profile #^ str chat]
+  "Retrieve the chat."
+  (or (jload (Path (profile-dir profile "chats") f"{chat}.json"))
+      []))
+
+(defmethod set-chat [#^ list messages #^ str profile #^ str chat]
+  "Store the chat."
+  (jsave messages (Path (profile-dir profile "chats") f"{chat}.json"))
+  messages)
+
+(defmethod delete-chat [#^ str profile #^ str chat]
+  "Completely remove a chat."
+  (try
+    (unlink (Path (profile-dir profile "chats") f"{chat}.json"))
+    (except [FileNotFoundError])))
+  
+(defmethod list-chats [#^ str profile]
+  "List chats available to a profile."
+  (lfor f (filenames (profile-dir profile "chats"))
+    :if (= (. (Path f) suffix) ".json")
+    (. (Path f) stem)))
+
+(defmethod rename-chat [#^ str profile #^ str chat #^ str to]
+  "Move the file associated with `chat` to `to`."
+  (rename
+    (Path (profile-dir profile "chats") f"{chat}.json")
+    (Path (profile-dir profile "chats") f"{to}.json")))
+
+(defmethod copy-chat [#^ str profile #^ str chat #^ str to]
+  "Cupy the file associated with `chat` to `to`."
+  (copyfile
+    (Path (profile-dir profile "chats") f"{chat}.json")
+    (Path (profile-dir profile "chats") f"{to}.json")))
+
+
+;; * accounts and identity
+;; key is profile
+;; -----------------------------------------------------------------------------
+
+(defmethod get-account [#^ str profile]
+  (or (jload (Path (profile-dir profile) "account.json"))
+      {}))
+
+(defmethod set-account [#^ dict account #^ str profile]
+  (when profile
+    (jsave account (Path (profile-dir profile) "account.json"))
     account))
 
-(defmethod update-account [#^ str username #** kwargs]
+(defmethod update-account [#^ str profile #** kwargs]
   "Update a player's details. You cannot change the name."
-  (let [account (get-account username)]
-    (set-account (| account kwargs) username)))
+  (let [account (get-account profile)]
+    (set-account (| account kwargs) profile)))
 
-(defmethod delete-account [#^ str username]
+(defmethod delete-account [#^ str profile]
   "Completely remove an account."
   (try
-    (unlink f"{accounts_dir}/{username}.json")
-    (rmtree f"{chats_dir}/{username}")
+    (rmtree (profile-dir profile))
     (except [FileNotFoundError])))
 
-(defn [cache] get-pubkey [#^ str username #^ str pub-key]
+(defn [cache] get-pubkey [#^ str profile #^ str pub-key]
   "Store the public key if it's not already known.
   Return the stored public key. First-come first-served."
-  (let [account (get-account username)]
+  (let [account (get-account profile)]
     (if (and account (:public-key account None)) ; if there is an account and it has a stored key
         (:public-key account) ; then use that key, otherwise,
-        (:public-key (update-account username
+        (:public-key (update-account profile
                            :last-accessed (time)
                            :public-key pub-key))))) ; store the provided key for next time
 

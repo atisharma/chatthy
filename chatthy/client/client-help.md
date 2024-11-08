@@ -1,8 +1,8 @@
 
-  ┏┓┓     ┓
-  ┃ ┣┓┏┓╋╋┣┓┓┏
-  ┗┛┛┗┗┻┗┗┛┗┗┫
-             ┛
+    ┏┓┓     ┓
+    ┃ ┣┓┏┓╋╋┣┓┓┏
+    ┗┛┛┗┗┻┗┗┛┗┗┫
+              ┗┛
 
 # Client bindings
 
@@ -14,7 +14,8 @@ Most readline-compatible bindings are implemented.
     Ctrl-q              quit
     Alt-m               toggle multiline input
     Shift-Tab           toggle focus between input and output
-    Tab                 enter a command
+    Tab                 input a command
+    Enter (Esc-Enter)   dispatch a command (multiline)
 
 ## Output bindings
 
@@ -27,13 +28,17 @@ Most readline-compatible bindings are implemented.
 
 ## Client commands
 
-    set :chat new-chat-name     switch to another chat
-    set :prompt prompt-name     switch to saved system prompt
+    load :chat new-chat-name    switch to another chat
+    load :profile profile-name  switch to a different profile (same passphrase)
+    load :prompt prompt-name    switch to saved system prompt
+    load :input filename        load a text file into the input field
+    load :ws filename           load a text file into the model's context
 
-## Server commands (a selection)
+## Server commands (a useful selection)
 
     commands            list all advertised server commands
     chats               list existing chats
     destroy             destroy the current chat
     undo                destroy the last message pair in the chat
+    ws :drop fname      drop `fname` from the context
 

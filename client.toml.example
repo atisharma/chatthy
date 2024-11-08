@@ -1,4 +1,4 @@
-username = "Anon"
+profile = "Anon"
 passphrase = "My secret passphrase"
 server = "tcp://localhost:23456"
 style = "nord"
