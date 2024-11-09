@@ -18,7 +18,7 @@ Implements client side of async ROUTER-DEALER pattern.
 (setv TIMEOUT 5)
 
 (setv context (zmq.asyncio.Context))
-(setv _keys (keys "client.toml"))
+(setv _keys (keys state.config-file))
 
 (defn start-socket []
   (setv socket (.socket context zmq.DEALER))

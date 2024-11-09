@@ -20,7 +20,7 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 
 ### functionality
 
-- [ ] client context workspace (load/drop files)
+- [x] context workspace (load/drop files)
 - [ ] summaries and standard client instructions (trag)
 - [x] client inject from file
 - [.] client inject from other sources (trag)
@@ -47,9 +47,9 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 
 ### misc
 
-- [ ] use proper config dir (group?)
+- [x] use proper config dir (group?)
 - [ ] dump default conf if missing
-
+- [ ] consider best method of pdf ingestion
 
 
 ## intended functionality by package

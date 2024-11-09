@@ -44,17 +44,17 @@ Chat completion functions.
 (defn provider [client-name]
   "Get the API client object from the config."
   (let [client None
-        cfg (:providers (config "server.toml"))
-        _ (get cfg client-name)
-        scheme (.pop _ "scheme" "tabby")
-        api-key (.pop _ "api_key" None)
-        model (.pop _ "model" None)
+        cfg (:providers cfg)
+        provider-config (.copy (get cfg client-name)) ; so it's there next time
+        scheme (.pop provider-config "scheme" "tabby")
+        api-key (.pop provider-config "api_key" None)
+        model (.pop provider-config "model" None)
         client (match scheme
                  "anthropic" (llm.Anthropic :api-key api-key)
                  "openai" (llm.OpenAI :api-key api-key)
-                 "tabby" (llm.TabbyClient :api-key api-key #** _))]
+                 "tabby" (llm.TabbyClient :api-key api-key #** provider-config))]
     (when model
-     (llm.model-load client model))
+      (llm.model-load client model))
     client))
 
 ;; FIXME doesn't work

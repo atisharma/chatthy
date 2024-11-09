@@ -25,19 +25,19 @@ classifiers = [
 dependencies = [
     "clipman",
     "hy",
-    "hyjinx",
+    "hyjinx[llm]",
+    "hyjinx[zmq]",
     "hyrule",
     "pansi",
     "platformdirs",
     "prompt_toolkit",
     "pygments",
     "tiktoken",
-    "toolz",
-    "trag"
+    "toolz"
 ]
 
 [project.optional-dependencies]
-server = ["hyjinx[llm]", "hyjinx[zmq]", "tabulate", "fvdb"]
+server = ["hyjinx[dev]", "tabulate", "trag", "fvdb"]
 
 [project.urls]
 Repository = "https://github.com/atisharma/chatthy"

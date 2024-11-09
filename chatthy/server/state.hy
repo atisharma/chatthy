@@ -29,15 +29,12 @@ Chats and account details are stored as json files.
 
 (import fvdb [faiss write])
 
-;; TODO use config dir
-;; (file-exists (Path (user-config-dir "chatthy") fname))
 
-;; TODO Path objects so it works on non-unix
+;; TODO consistently use Path objects so it works on non-unix
 
   
 ;; * zmq server state
 ;; -----------------------------------------------------------------------------
-
 
 (setv context (zmq.asyncio.Context))
 (setv socket (.socket context zmq.ROUTER))
@@ -46,7 +43,14 @@ Chats and account details are stored as json files.
 ;; * Identify and access the storage directory
 ;; -----------------------------------------------------------------------------
 
-(setv cfg (config "server.toml"))
+;; look for ~/.config/chatthy/server.toml
+;; or default to $pwd/server.toml
+(let [p (Path (user-config-dir "chatthy") "server.toml")]
+  (if (.exists p)
+    (setv config-file p)
+    (setv config-file "server.toml")))
+
+(setv cfg (config config-file))
 (setv storage-dir (:storage cfg "state"))
 
 (defn sanitize [profile]

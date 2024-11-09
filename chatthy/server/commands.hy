@@ -213,7 +213,7 @@ Implements server's RPC methods (commands)
       (await (client-rpc sid "chunk" :result chunk)))
     (await (client-rpc sid "chunk" :result "\n\n"))
     (.append saved-messages usr-msg)
-    (.append saved-messages {"role" "assistant" "content" reply "timestamp" (time)})
+    (.append saved-messages {"role" "assistant" "content" (.strip reply) "timestamp" (time)})
     (set-chat saved-messages profile chat))
   (await (client-rpc sid "status" :result "ready")))
 

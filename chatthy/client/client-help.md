@@ -12,6 +12,7 @@ Most readline-compatible bindings are implemented.
 
     F1                  show this help text
     Ctrl-q              quit
+    Ctrl-l              refresh message window
     Alt-m               toggle multiline input
     Shift-Tab           toggle focus between input and output
     Tab                 input a command

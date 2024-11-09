@@ -10,8 +10,13 @@ def client():
 
 def serve():
     "Run the chatthy server."
-    print("Running the server.")
+    print("Starting the server...")
+    from fvdb.embeddings import force_import
+    force_import()
+    from chatthy.server import state
+    print(f"Using {state.config_file}, defines {', '.join(state.cfg['providers'])}")
     import chatthy.server.server
+    print(f"Listening on {state.cfg['listen']}")
     chatthy.server.server.run()
 
 def run():

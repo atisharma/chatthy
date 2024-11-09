@@ -115,6 +115,7 @@ Prompt-toolkit application for simple chat REPL.
   (cond
     n "⋮ "
     input-field.command (ANSI f"{ansi.red}: ")
+    input-field.multiline (ANSI f"{ansi.blue}> ")
     :else (ANSI f"{ansi.green}> ")))
   
 (defn set-chat [* [chat None]]
@@ -222,13 +223,13 @@ Prompt-toolkit application for simple chat REPL.
   "Set the mode field text. Parses ANSI codes."
   (cond
     (and input-field.multiline input-field.command)
-    (setv mode-field.text "command multiline")
+    (setv mode-field.text (ANSI f"{ansi.blue}multiline {ansi.red}command"))
 
     input-field.command
-    (setv mode-field.text "command")
+    (setv mode-field.text (ANSI f"{ansi.red}command"))
 
     input-field.multiline
-    (setv mode-field.text "multiline")
+    (setv mode-field.text (ANSI f"{ansi.blue}multiline"))
 
     :else
     (setv mode-field.text ""))

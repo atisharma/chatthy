@@ -4,7 +4,7 @@ The client's offered RPCs.
 
 (require hyrule.argmove [-> ->>]) 
 
-(import hyjinx [config first])
+(import hyjinx [config first second last])
 (import hyjinx.wire [rpc])
 
 (import os)
@@ -45,9 +45,18 @@ The client's offered RPCs.
 ;; * printers, input hook
 ;; -----------------------------------------------------------------------------
 
+(defn quote-lines [line [prefix ["> " "  "]]]
+  "Quote a single-line string with '> ' (first prefix).
+  Quote a multi-line string with indent (second prefix)."
+  (+ (first prefix)
+     (if (.count line "\n")
+       (.join f"\n{(second prefix)}"
+         (.split line "\n"))
+       line)))
+
 (defn print-input [line]
   "Print a line of input."
-  (sync-await (echo :result {"role" "user" "content" f"{line}"})))
+  (sync-await (echo :result {"role" "user" "content" line})))
 
 (defn print-exception [exception [s ""]]
   (output-text f"## Client exception\n```py3tb\n")
@@ -76,14 +85,14 @@ The client's offered RPCs.
   ;; It would be nice to indent > multiline user input
   ;; but we don't know where it will be wrapped.
   (when result
-    (let [role-prompt (match (:role result)
-                        "assistant" ""
-                        "user" "> "
-                        "system" f"## System "
-                        "server" f"## Server "
-                        _ f"{(:role msg)}: ")]
+    (let [text (match (:role result)
+                 "assistant" (:content result)
+                 "user" (quote-lines (:content result))
+                 "system" (+ f"## System " (:content result))
+                 "server" (+ f"## Server " (:content result))
+                 _ (+ f"{(:role msg)}: " (:content result)))]
       (output-text
-        (+ role-prompt (:content result) "\n\n")))))
+        (+ text "\n\n")))))
 
 (defn :async [rpc] chunk [* result #** kwargs]
   "Print a chunk of a stream."
