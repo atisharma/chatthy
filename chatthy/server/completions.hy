@@ -69,7 +69,8 @@ Chat completion functions.
 
 (defmethod stream-completion [#^ llm.OpenAI client #^ list messages * [stream True] [max-tokens 4000] #** kwargs]
   "Generate a streaming completion using the chat completion endpoint."
-  (let [messages (lfor m messages
+  (let [;; clean non-content fields
+        messages (lfor m messages
                        :if (in (:role m) ["user" "assistant" "system"])
                        {"role" (:role m)
                         "content" (:content m)})
@@ -92,6 +93,7 @@ Chat completion functions.
                                (lfor m messages
                                      :if (= (:role m) "system")
                                      (:content m)))
+        ;; clean non-content fields
         messages (lfor m messages
                        :if (in (:role m) ["user" "assistant"])
                        {"role" (:role m)

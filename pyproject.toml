@@ -25,7 +25,6 @@ classifiers = [
 dependencies = [
     "clipman",
     "hy",
-    "hyjinx[llm]",
     "hyjinx[zmq]",
     "hyrule",
     "pansi",

@@ -29,6 +29,7 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [ ] (auto) tools (evolve from llama-farm -> trag)
 - [ ] server use vdb context at LLM will
 - [ ] iterative workflows (refer to llama-farm)
+- [ ] image sending
 
 
 ### client interface
@@ -40,7 +41,6 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] REPL command mode
 - [x] cut/copy from output
 - [x] client-side prompt editing
-- [ ] image sending
 - [ ] client-side chat/message editing (how? temporarily set the input field history?)
 - [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex, pylatexenc).
 

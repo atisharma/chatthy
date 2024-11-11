@@ -71,6 +71,7 @@ Prompt-toolkit application for simple chat REPL.
   ;; the put is async, but called from sync function
   (when buffer.text
     (sync-await (.put state.input-queue buffer.text)))
+  ;; TODO when image teed up, put the image-message in appropriately
   None)
   
 (defn command-input-handler [buffer]
@@ -86,7 +87,10 @@ Prompt-toolkit application for simple chat REPL.
       (assoc kwargs "chat" (:chat kwargs state.chat)) ; default to current chat
       (match method
         "load" (match (first kwargs)
+                 ;; TODO  image queueing up here
+                 ;;       format and send to input queue
                  "chat" (set-chat :chat (:chat kwargs))
+                 "image" (raise NotImplementedError)
                  "input" (input-text (slurp (:file kwargs)) :multiline True)
                  "ws" (sync-await (server-rpc "ws"
                                               :provider state.provider

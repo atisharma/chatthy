@@ -45,6 +45,7 @@ The client's offered RPCs.
 ;; * printers, input hook
 ;; -----------------------------------------------------------------------------
 
+;; TODO manage image messages
 (defn quote-lines [line [prefix ["> " "  "]]]
   "Quote a single-line string with '> ' (first prefix).
   Quote a multi-line string with indent (second prefix)."
