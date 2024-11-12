@@ -1,7 +1,9 @@
 listen = "tcp://*:23456"
 storage = "state"
 tasks = 5
-context-length = 60000
+# batch tokens together when sending chunks to clients
+batch = 1
+context_length = 60000
 max_tokens = 550
 
 # the default system prompt
@@ -28,3 +30,5 @@ base_url = "http://localhost:5000/v1"
 scheme = "anthropic"
 api_key = "sk-some-api-key"
 model = "claude-3-5-sonnet"
+# override
+context_length = 180000

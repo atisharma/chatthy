@@ -76,10 +76,10 @@ The client's offered RPCs.
   (update-status))
 
 (defn :async [rpc] error [* result #** kwargs]
-  (output-text f"## Error\n{(str result)}\n\n"))
+  (output-text f"⚠️  \n{(str result)}\n\n"))
 
 (defn :async [rpc] info [* result #** kwargs]
-  (output-text f"Info: {(str result)}\n\n"))
+  (output-text f"ℹ️  \n{(str result)}\n\n"))
 
 (defn :async [rpc] echo [* result #** kwargs]
   "Format and print a message with role to the screen."

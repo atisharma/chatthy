@@ -5,7 +5,7 @@ Prompt-toolkit application for simple chat REPL.
 (import hy [mangle])
 (require hyrule [defmain])
 
-(import hyrule [assoc])
+(import hyrule [assoc inc])
 (import hyjinx.lib [first rest slurp sync-await])
 (import itertools [pairwise])
 
@@ -14,6 +14,7 @@ Prompt-toolkit application for simple chat REPL.
 (import re)
 (import os)
 (import pansi [ansi])
+(import pathlib [Path])
 (import shutil [get-terminal-size])
 (import shlex)
 
@@ -25,7 +26,8 @@ Prompt-toolkit application for simple chat REPL.
 (import prompt_toolkit.layout.dimension [Dimension])
 (import prompt-toolkit.document [Document])
 (import prompt-toolkit.filters [Condition to-filter is-multiline has-focus])
-;(import prompt-toolkit.formatted-text [FormattedText])
+(import prompt-toolkit.filters [Condition to-filter is-multiline has-focus])
+(import prompt-toolkit.formatted-text [to-plain-text])
 (import prompt-toolkit.key-binding [KeyBindings])
 (import prompt_toolkit.key_binding.bindings.page_navigation [scroll_page_up scroll_page_down])
 (import prompt-toolkit.layout.containers [HSplit VSplit Window])
@@ -85,30 +87,39 @@ Prompt-toolkit application for simple chat REPL.
           kwargs (dfor [k v] (pairwise (rest arglist))
                    (mangle (re.sub "^:" "" k)) v)]
       (assoc kwargs "chat" (:chat kwargs state.chat)) ; default to current chat
-      (match method
-        "load" (match (first kwargs)
-                 ;; TODO  image queueing up here
-                 ;;       format and send to input queue
-                 "chat" (set-chat :chat (:chat kwargs))
-                 "image" (raise NotImplementedError)
-                 "input" (input-text (slurp (:file kwargs)) :multiline True)
-                 "ws" (sync-await (server-rpc "ws"
-                                              :provider state.provider
-                                              :load (:ws kwargs)
-                                              :text (.strip (slurp (:ws kwargs)))
-                                              #** kwargs))
-                 "profile" (do
-                             (setv state.profile (:profile kwargs))
-                             (title-text))
-                 "provider" (do
-                              (setv state.provider (:provider kwargs))
-                              (title-text))
-                 "prompt" (do
-                            (setv state.prompt-name (:prompt kwargs))
-                            (title-text)))
-        _ (sync-await (server-rpc method :provider state.provider :prompt-name state.prompt-name #** kwargs)))))
+      (client-command method #** kwargs)))
   (mode-text)
   None)
+
+(defn client-command [method #** kwargs]
+  "Client commands are parsed here."
+  (match method
+    "load" (match (first kwargs)
+             ;; TODO  image queueing up here
+             ;;       format and send to input queue
+             "chat" (set-chat :chat (:chat kwargs))
+             "image" (raise NotImplementedError)
+             "input" (input-text (slurp (:file kwargs)) :multiline True)
+             "ws" 
+             (let [fname (. (Path (:ws kwargs)) name)
+                   text (.strip (slurp (:ws kwargs)))]
+               (output-text f"{fname}\n\n")
+               (output-text f"{text}\n\n")
+               (sync-await (server-rpc "ws"
+                             :provider state.provider
+                             :fname fname
+                             :text text
+                             #** kwargs)))
+             "profile" (do
+                         (setv state.profile (:profile kwargs))
+                         (title-text))
+             "provider" (do
+                          (setv state.provider (:provider kwargs))
+                          (title-text))
+             "prompt" (do
+                        (setv state.prompt-name (:prompt kwargs))
+                        (title-text)))
+    _ (sync-await (server-rpc method :provider state.provider :prompt-name state.prompt-name #** kwargs))))
 
 
 ;; * setters, app state, text fields
@@ -135,9 +146,12 @@ Prompt-toolkit application for simple chat REPL.
 
 (setv kb (KeyBindings))
 
-(setv status-field (Label :text "" :style "class:reverse"))
-(setv title-field (Label :text "" :align WindowAlign.CENTER :style "class:reverse"))
-(setv mode-field (Label :text "" :align WindowAlign.RIGHT :style "class:reverse"))
+(setv status-field (Label :text "" :align WindowAlign.RIGHT :style "class:reverse"))
+(setv title-field (Label :text "" :align WindowAlign.LEFT :style "class:reverse"))
+(setv mode-field (Label :text ""
+                        :width (fn [] (inc (len (to-plain-text mode-field.text))))
+                        :align WindowAlign.RIGHT))
+                        ;;:style "class:reverse"))
 (setv output-field (TextArea :text ""
                              :wrap-lines True
                              :lexer (PygmentsLexer MarkdownLexer)
@@ -162,10 +176,10 @@ Prompt-toolkit application for simple chat REPL.
 
     (let [ptk-style (style-from-pygments-cls (get-style-by-name (:style state.cfg "friendly_grayscale")))
           padding (Window :width 2)]
-      (setv container (HSplit [(VSplit [status-field title-field mode-field])
+      (setv container (HSplit [(VSplit [title-field status-field])
                                (VSplit [padding output-field padding]) 
                                ;(HorizontalLine) 
-                               input-field]))
+                               (VSplit [input-field mode-field])]))
       (title-text)
       (output-help)
       (.__init__ (super) :layout (Layout container :focused-element input-field)
@@ -227,13 +241,13 @@ Prompt-toolkit application for simple chat REPL.
   "Set the mode field text. Parses ANSI codes."
   (cond
     (and input-field.multiline input-field.command)
-    (setv mode-field.text (ANSI f"{ansi.blue}multiline {ansi.red}command"))
+    (setv mode-field.text (ANSI f"{ansi.blue}{ansi.rev}multiline{ansi.reset} {ansi.red}{ansi.rev}command"))
 
     input-field.command
-    (setv mode-field.text (ANSI f"{ansi.red}command"))
+    (setv mode-field.text (ANSI f"{ansi.red}{ansi.rev}command"))
 
     input-field.multiline
-    (setv mode-field.text (ANSI f"{ansi.blue}multiline"))
+    (setv mode-field.text (ANSI f"{ansi.blue}{ansi.rev}multiline"))
 
     :else
     (setv mode-field.text ""))

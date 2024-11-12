@@ -4,8 +4,6 @@ Implements server's RPC methods (commands)
 
 (require hyrule.argmove [-> ->>])
 
-(import itertools [batched])
-
 (import hyjinx.lib [first last])
 (import hyjinx.wire [wrap rpc rpcs])
 
@@ -14,6 +12,7 @@ Implements server's RPC methods (commands)
 (import tabulate [tabulate])
 (import time [time])
 
+(import chatthy [__version__])
 (import chatthy.server.completions [stream-completion truncate])
 (import chatthy.embeddings [token-count])
 (import chatthy.server.rag [vdb-extracts vdb-info
@@ -41,7 +40,7 @@ Implements server's RPC methods (commands)
 (defn :async [rpc] status [* sid #** kwargs]
   ;; no docstring so it doesn't advertise to clients
   ;; regular status update
-  (await (client-rpc sid "status" :result "responding")))
+  (await (client-rpc sid "status" :result f"✅v{__version__}")))
 
 (defn :async [rpc] echo [* sid result #** kwargs]
   ;; no docstring so it doesn't advertise to clients
@@ -136,30 +135,30 @@ Implements server's RPC methods (commands)
 (defn :async [rpc] rename [* sid profile chat to #** kwargs]
   "Rename the user's chat."
   (rename-chat profile chat to)
-  (chats :sid sid :profile profile))
+  (await (chats :sid sid :profile profile)))
 
 (defn :async [rpc] fork [* sid profile chat to #** kwargs]
   "Make a copy of the user's chat."
   (copy-chat profile chat to)
-  (chats :sid sid :profile profile))
+  (await (chats :sid sid :profile profile)))
 
 
 ;; * workspace management
 ;; -----------------------------------------------------------------------------
 
-(defn :async [rpc] ws [* sid profile [drop False] [load False] [text ""] #** kwargs]
+(defn :async [rpc] ws [* sid profile [drop False] [fname False] [text ""] #** kwargs]
   "With kwargs `:drop fname`, completely remove file `drop` from the profile's workspace.
-  With kwarg `:load fname`, store `:text \"text\"` into a file in the profile's current workspace.
+  With kwarg `:fname fname`, store `:text \"text\"` into a file in the profile's current workspace.
   Otherwise List files available in a profile's workspace."
   (cond
-    (and load text)
+    (and fname text)
     (do
-      (write-ws profile load text)
-      (await (client-rpc sid "info" :result f"Loaded '{load}' into context workspace.")))
+      (write-ws profile fname text)
+      (await (client-rpc sid "info" :result f"Loaded '{fname}' into context workspace.")))
 
-    load
-    (await (client-rpc sid "info" :result (.join "\n\n" [f"Workspace context file {load}:"
-                                                         (get-ws profile load)])))
+    fname
+    (await (client-rpc sid "info" :result (.join "\n\n" [f"Contents of workspace file {fname}:"
+                                                         (get-ws profile fname)])))
 
     drop
     (do
@@ -190,7 +189,6 @@ Implements server's RPC methods (commands)
 
 (defn :async [rpc] chat [* sid profile chat prompt-name line provider #** kwargs]
   ;; no docstring so it doesn't advertise to clients
-  ;; Send the streamed reply in batched chunks.
   (let [reply ""
         chunk ""
         prompts (:prompts (get-account profile))
@@ -203,19 +201,18 @@ Implements server's RPC methods (commands)
                                      :space (+ (:max-tokens cfg 600)
                                                (token-count system-prompt)
                                                (token-count ws-msgs)
-                                               (token-count line)))
+                                               (token-count line))
+                                     :provider provider)
         sent-messages [system-msg #* ws-msgs #* messages usr-msg]]
-    (for [chunk (map (fn [xs] (.join "" xs))
-                     (batched (stream-completion provider sent-messages #** kwargs)
-                              (:batch cfg 2)))]
+    (for [:async chunk (stream-completion provider sent-messages #** kwargs)]
       (+= reply chunk)
-      (await (client-rpc sid "status" :result "streaming"))
+      (await (client-rpc sid "status" :result "✅streaming"))
       (await (client-rpc sid "chunk" :result chunk)))
     (await (client-rpc sid "chunk" :result "\n\n"))
     (.append saved-messages usr-msg)
     (.append saved-messages {"role" "assistant" "content" (.strip reply) "timestamp" (time)})
     (set-chat saved-messages profile chat))
-  (await (client-rpc sid "status" :result "ready")))
+  (await (client-rpc sid "status" :result "✅ready")))
 
 (defn :async [rpc] vdb [* sid profile chat prompt-name query provider #** kwargs]
   "Use RAG from the vdb alongside the chat context to respond to the query."
@@ -223,9 +220,9 @@ Implements server's RPC methods (commands)
   ;; TODO tidy advertised function sig - maybe rpc argument?
   ;; FIXME  guard against final user message being too long;
   ;;        recursion depth in `truncate`?
-  (await (client-rpc sid "status" :result "querying"))
+  (await (client-rpc sid "status" :result "⏳querying"))
   (await (client-rpc sid "echo" :result {"role" "user" "content" f"{query}"}))
-  (let [context-length (:context-length cfg 30000)
+  (let [context-length (:context-length (get cfg "providers" provider) (:context-length cfg 30000))
         rag-line (await (vdb-extracts query :profile profile :max-length (/ context-length 2)))
         reply ""
         chunk ""
@@ -240,11 +237,10 @@ Implements server's RPC methods (commands)
                                      :space (+ (:max-tokens cfg 600)
                                                (token-count system-prompt)
                                                (token-count ws-msgs)
-                                               (token-count rag-line)))
+                                               (token-count rag-line))
+                                     :provider provider)
         sent-messages [system-msg #* ws-msgs #* messages rag-usr-msg]]
-    (for [chunk (map (fn [xs] (.join "" xs))
-                     (batched (stream-completion provider sent-messages #** kwargs)
-                              (:batch cfg 2)))]
+    (for [:async chunk (stream-completion provider sent-messages #** kwargs)]
       (+= reply chunk)
       (await (client-rpc sid "status" :result "streaming"))
       (await (client-rpc sid "chunk" :result chunk)))

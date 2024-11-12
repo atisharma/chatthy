@@ -11,13 +11,14 @@ Chat completion functions.
 (import chatthy.server.state [cfg])
 
 
-(defn truncate [messages * [dropped []] [space (:max-tokens cfg 600)]]
+(defn truncate [messages * provider [dropped []] [space (:max-tokens cfg 600)]]
   "Shorten the chat history if it gets too long, in which case
   split it and return two lists, the kept messages, and the dropped messages (in pairs).
   Use `space` to preserve space for new output or other messages that are not
   to be dropped.
   Returns `[messages, dropped]`."
-  (let [context-length (:context-length cfg 30000)
+  (let [context-length (:context-length (get cfg "providers" provider)
+                                        (:context-length cfg 30000))
         ;; Any system message must be in the first position
         ;; or will be silently discarded.
         system-msg (when (and messages
@@ -37,8 +38,8 @@ Chat completion functions.
       (let [kept (cut chat-msgs 2 None)
             new-dropped (+ dropped (cut chat-msgs 0 2))]
         (if system-msg
-          (truncate (+ [system-msg] kept) :dropped new-dropped :space space)
-          (truncate kept :dropped new-dropped :space space)))
+          (truncate (+ [system-msg] kept) :dropped new-dropped :space space :provider provider)
+          (truncate kept :dropped new-dropped :space space :provider provider)))
       [messages dropped])))
 
 (defn provider [client-name]
@@ -46,65 +47,73 @@ Chat completion functions.
   (let [client None
         cfg (:providers cfg)
         provider-config (.copy (get cfg client-name)) ; so it's there next time
+        context-length (.pop provider-config "context_length" None) ; can't be passed to model
         scheme (.pop provider-config "scheme" "tabby")
         api-key (.pop provider-config "api_key" None)
         model (.pop provider-config "model" None)
         client (match scheme
-                 "anthropic" (llm.Anthropic :api-key api-key)
-                 "openai" (llm.OpenAI :api-key api-key)
-                 "tabby" (llm.TabbyClient :api-key api-key #** provider-config))]
+                 "anthropic" (llm.AsyncAnthropic :api-key api-key)
+                 "openai" (llm.AsyncOpenAI :api-key api-key)
+                 "tabby" (llm.AsyncTabbyClient :api-key api-key #** provider-config))]
     (when model
       (llm.model-load client model))
     client))
 
-;; FIXME doesn't work
-(defn :async async-stream-completion [#* args #** kwargs]
-  "Async generate a streaming completion using the router API endpoint."
-  (await (coroutine stream-completion #* args #** kwargs)))
+(defmethod :async stream-completion [#^ str client-name #^ list messages #** kwargs]
+  "Generate a batched streaming completion using the router API endpoint."
+  (let [client (provider client-name)
+        batch-size (:batch cfg 1)
+        chunks []]
+    (for [:async chunk (stream-completion client messages #** kwargs)]
+      (if (< (len chunks) batch-size)
+        (.append chunks chunk)
+        (do
+          (.append chunks chunk)
+          (yield (.join "" chunks))
+          (setv chunks []))))
+    (when chunks
+      (yield (.join "" chunks)))))
 
-(defmethod stream-completion [#^ str client-name #^ list messages #** kwargs]
-  "Generate a streaming completion using the router API endpoint."
-  (let [client (provider client-name)]
-    (stream-completion client messages #** kwargs)))
-
-(defmethod stream-completion [#^ llm.OpenAI client #^ list messages * [stream True] [max-tokens 4000] #** kwargs]
+(defmethod :async stream-completion [#^ llm.AsyncOpenAI client #^ list messages * [stream True] [max-tokens 4000] #** kwargs]
   "Generate a streaming completion using the chat completion endpoint."
   (let [;; clean non-content fields
+        ;; TODO form special image message here
         messages (lfor m messages
                        :if (in (:role m) ["user" "assistant" "system"])
                        {"role" (:role m)
                         "content" (:content m)})
-        stream (client.chat.completions.create
-                 :model (.pop kwargs "model" (getattr client "model" None))
-                 :messages messages
-                 :stream stream
-                 :max-tokens max-tokens
-                 #** client._defaults
-                 #** kwargs)]
-    (for [chunk stream :if chunk.choices]
+        stream (await (client.chat.completions.create
+                        :model (.pop kwargs "model" (getattr client "model" None))
+                        :messages messages
+                        :stream stream
+                        :max-tokens max-tokens
+                        #** client._defaults
+                        #** kwargs))]
+    (for [:async chunk stream :if chunk.choices]
       (let [text (. (. (first chunk.choices) delta) content)]
         (if text
           (yield text)
           (yield ""))))))
 
-(defmethod stream-completion [#^ llm.Anthropic client #^ list messages * [max-tokens 4000] #** kwargs]
+(defmethod :async stream-completion [#^ llm.AsyncAnthropic client #^ list messages * [max-tokens 4000] #** kwargs]
   "Generate a streaming completion using the messages endpoint."
   (let [system-messages (.join "\n"
                                (lfor m messages
                                      :if (= (:role m) "system")
                                      (:content m)))
         ;; clean non-content fields
+        ;; TODO form special image message here
         messages (lfor m messages
                        :if (in (:role m) ["user" "assistant"])
                        {"role" (:role m)
                         "content" (:content m)})]
-    (with [stream (client.messages.stream
-                    :model (.pop kwargs "model" (getattr client "model" "claude-3-5-sonnet"))
-                    :system system-messages
-                    :messages messages
-                    :max-tokens max-tokens
-                    #** client._defaults
-                    #** kwargs)]
-      (for [text stream.text-stream :if text]
+    (with [:async stream (client.messages.stream
+                           :model (.pop kwargs "model" (getattr client "model" "claude-3-5-sonnet"))
+                           :system system-messages
+                           :messages messages
+                           :max-tokens max-tokens
+                           #** client._defaults
+                           #** kwargs)]
+      (for [:async text stream.text-stream :if text]
         (yield text)))))
 
