@@ -40,7 +40,7 @@ Implements server's RPC methods (commands)
 (defn :async [rpc] status [* sid #** kwargs]
   ;; no docstring so it doesn't advertise to clients
   ;; regular status update
-  (await (client-rpc sid "status" :result f"✅v{__version__}")))
+  (await (client-rpc sid "status" :result f"v{__version__} ✅")))
 
 (defn :async [rpc] echo [* sid result #** kwargs]
   ;; no docstring so it doesn't advertise to clients
@@ -206,13 +206,13 @@ Implements server's RPC methods (commands)
         sent-messages [system-msg #* ws-msgs #* messages usr-msg]]
     (for [:async chunk (stream-completion provider sent-messages #** kwargs)]
       (+= reply chunk)
-      (await (client-rpc sid "status" :result "✅streaming"))
-      (await (client-rpc sid "chunk" :result chunk)))
-    (await (client-rpc sid "chunk" :result "\n\n"))
+      (await (client-rpc sid "status" :result "streaming ✅"))
+      (await (client-rpc sid "chunk" :result chunk :chat chat)))
+    (await (client-rpc sid "chunk" :result "\n\n" :chat chat))
     (.append saved-messages usr-msg)
     (.append saved-messages {"role" "assistant" "content" (.strip reply) "timestamp" (time)})
     (set-chat saved-messages profile chat))
-  (await (client-rpc sid "status" :result "✅ready")))
+  (await (client-rpc sid "status" :result "ready ✅")))
 
 (defn :async [rpc] vdb [* sid profile chat prompt-name query provider #** kwargs]
   "Use RAG from the vdb alongside the chat context to respond to the query."
@@ -220,7 +220,7 @@ Implements server's RPC methods (commands)
   ;; TODO tidy advertised function sig - maybe rpc argument?
   ;; FIXME  guard against final user message being too long;
   ;;        recursion depth in `truncate`?
-  (await (client-rpc sid "status" :result "⏳querying"))
+  (await (client-rpc sid "status" :result "querying ⏳"))
   (await (client-rpc sid "echo" :result {"role" "user" "content" f"{query}"}))
   (let [context-length (:context-length (get cfg "providers" provider) (:context-length cfg 30000))
         rag-line (await (vdb-extracts query :profile profile :max-length (/ context-length 2)))
@@ -242,11 +242,11 @@ Implements server's RPC methods (commands)
         sent-messages [system-msg #* ws-msgs #* messages rag-usr-msg]]
     (for [:async chunk (stream-completion provider sent-messages #** kwargs)]
       (+= reply chunk)
-      (await (client-rpc sid "status" :result "streaming"))
-      (await (client-rpc sid "chunk" :result chunk)))
-    (await (client-rpc sid "chunk" :result "\n\n"))
+      (await (client-rpc sid "status" :result "streaming ✅"))
+      (await (client-rpc sid "chunk" :result chunk :chat chat)))
+    (await (client-rpc sid "chunk" :result "\n\n" :chat chat))
     (.append saved-messages saved-usr-msg)
     (.append saved-messages {"role" "assistant" "content" (extract-output reply) "timestamp" (time)})
     (set-chat saved-messages profile chat))
-  (await (client-rpc sid "status" :result "ready")))
+  (await (client-rpc sid "status" :result "ready ✅")))
 

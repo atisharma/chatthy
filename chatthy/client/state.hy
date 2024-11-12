@@ -25,6 +25,8 @@ Manage the client's shared state.
 (setv provider (:provider cfg None))
 (setv prompt-name (:prompt cfg "default"))
 
+(setv server-status {"result" "Connecting ☇"})
+
 
 ;; * Global vars
 ;; -----------------------------------------------------------------------------

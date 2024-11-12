@@ -32,14 +32,12 @@ The client's offered RPCs.
 (defn update-status []
   "Check the age of the last status message and show."
   (try
-    (let [age (- (time) (:server-time _status 0))]
+    (let [age (- (time) (:server-time state.server-status 0))]
       (status-text (if (> age 15)
-                     f"no response from server"
-                     (:result _status))))
+                     f"no response from server ❌"
+                     (:result state.server-status))))
     (except [e [BaseException]]
-      (status-text f"confusing status: {(str status)} {(str e)}"))))
-
-(setv _status {"result" "Connecting"})
+      (status-text f"confusing status: {(str status)} {(str e)} ❌"))))
 
 
 ;; * printers, input hook
@@ -60,7 +58,7 @@ The client's offered RPCs.
   (sync-await (echo :result {"role" "user" "content" line})))
 
 (defn print-exception [exception [s ""]]
-  (output-text f"## Client exception\n```py3tb\n")
+  (output-text f"❌Client exception\n```py3tb\n")
   (output-text (.join "\n" (format-exception exception)))
   (output-text f"\n```\n{s}\n\n"))
 
@@ -70,16 +68,15 @@ The client's offered RPCs.
 
 (defn :async [rpc] status [#** kwargs]
   "Set the status and update the status bar."
-  (global _status)
-  (setv _status {#** _status
-                 #** kwargs})
+  (setv state.server-status {#** state.server-status
+                             #** kwargs})
   (update-status))
 
 (defn :async [rpc] error [* result #** kwargs]
-  (output-text f"⚠️  \n{(str result)}\n\n"))
+  (output-text f"⚠️ {(str result)}\n\n"))
 
 (defn :async [rpc] info [* result #** kwargs]
-  (output-text f"ℹ️  \n{(str result)}\n\n"))
+  (output-text f"ℹ️ {(str result)}\n\n"))
 
 (defn :async [rpc] echo [* result #** kwargs]
   "Format and print a message with role to the screen."
@@ -89,15 +86,16 @@ The client's offered RPCs.
     (let [text (match (:role result)
                  "assistant" (:content result)
                  "user" (quote-lines (:content result))
-                 "system" (+ f"## System " (:content result))
-                 "server" (+ f"## Server " (:content result))
+                 "system" (+ f"❕ System " (:content result))
+                 "server" (+ f"❕ Server " (:content result))
                  _ (+ f"{(:role msg)}: " (:content result)))]
       (output-text
         (+ text "\n\n")))))
 
-(defn :async [rpc] chunk [* result #** kwargs]
+(defn :async [rpc] chunk [* result chat #** kwargs]
   "Print a chunk of a stream."
-  (output-text result))
+  (when (= chat state.chat)
+    (output-text result)))
 
 (defn :async [rpc] messages [* workspace chat #** kwargs]
   "Clear the text and print all the messages."
