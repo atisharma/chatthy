@@ -7,6 +7,7 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 
 - [x] client/server RPC-type architecture
 - [x] message signing
+- [ ] ensure chunk ordering
 
 
 ### chat management
@@ -20,10 +21,11 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 
 ### functionality
 
-- [x] context workspace (load/drop files)
 - [ ] summaries and standard client instructions (trag)
+- [x] context workspace (load/drop files)
+- [ ] context workspace - bench/suspend files (checkbox form?)
 - [x] client inject from file
-- [.] client inject from other sources, e.g. youtube (trag)
+- [x] client inject from other sources, e.g. youtube (trag)
 - [x] server use vdb context on request
 - [x] templates for standard instruction requests (trag)
 - [ ] (auto) tools (evolve from llama-farm -> trag)

@@ -4,7 +4,7 @@ Implements server's RPC methods (commands)
 
 (require hyrule.argmove [-> ->>])
 
-(import hyjinx.lib [first last])
+(import hyjinx.lib [first last short-id])
 (import hyjinx.wire [wrap rpc rpcs])
 
 (import inspect [signature])
@@ -12,6 +12,7 @@ Implements server's RPC methods (commands)
 (import tabulate [tabulate])
 (import time [time])
 
+(import trag [retrieve])
 (import chatthy [__version__])
 (import chatthy.server.completions [stream-completion truncate])
 (import chatthy.embeddings [token-count])
@@ -145,15 +146,61 @@ Implements server's RPC methods (commands)
 ;; * workspace management
 ;; -----------------------------------------------------------------------------
 
-(defn :async [rpc] ws [* sid profile [drop False] [fname False] [text ""] #** kwargs]
+(defn :async [rpc] ws
+  [*
+   sid
+   profile
+   [drop False]
+   [fname False]
+   [text ""]
+   [arxiv False]
+   [news False]
+   [url False]
+   [wikipedia False]
+   [youtube False]
+   #** kwargs]
   "With kwargs `:drop fname`, completely remove file `drop` from the profile's workspace.
   With kwarg `:fname fname`, store `:text \"text\"` into a file in the profile's current workspace.
+  With `:youtube id`, put the transcript of a youtube video in the workspace.
+  With `:url \"url\"`, put a the contents of a url the workspace.
+  With `:arxiv \"search topic\"`, put a the results of an arXiv search (abstracts) in the workspace.
+  With `:wikipedia \"topic\"`, put a wikipedia article in the workspace.
   Otherwise List files available in a profile's workspace."
   (cond
+    youtube
+    (let [text (retrieve.youtube youtube :punctuate (:punctuate cfg False))
+          fname f"youtube-{youtube}"]
+      (write-ws profile fname text)
+      (await (client-rpc sid "info" :result f"Loaded transcript for YouTube video {id} into context workspace.")))
+
+    url
+    (let [text (retrieve.url url)
+          fname (retrieve.filename-from-url)]
+      (write-ws profile fname text)
+      (await (client-rpc sid "info" :result f"Loaded {url} into context workspace, saved as '{fname}'.")))
+
+    arxiv
+    (let [text (retrieve.arxiv arxiv)
+          fname (short-id arxiv)]
+      (write-ws profile fname text)
+      (await (client-rpc sid "info" :result f"Loaded {url} into context workspace, saved as '{fname}'.")))
+
+    news
+    (let [text (retrieve.ddg-news news)
+          fname (short-id news)]
+      (write-ws profile fname text)
+      (await (client-rpc sid "info" :result f"Loaded news query into context workspace, saved as '{fname}'.")))
+
+    wikipedia
+    (let [text (retrieve.wikipedia wikipedia)
+          fname (short-id wikipedia)]
+      (write-ws profile fname text)
+      (await (client-rpc sid "info" :result f"Loaded wikipedia query into context workspace, saved as '{fname}'.")))
+
     (and fname text)
     (do
       (write-ws profile fname text)
-      (await (client-rpc sid "info" :result f"Loaded '{fname}' into context workspace.")))
+      (await (client-rpc sid "info" :result f"Loaded file '{fname}' into context workspace.")))
 
     fname
     (await (client-rpc sid "info" :result (.join "\n\n" [f"Contents of workspace file {fname}:"

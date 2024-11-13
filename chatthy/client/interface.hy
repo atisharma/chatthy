@@ -129,7 +129,7 @@ The client's offered RPCs.
   (output-text (+ "❕Server commands available:\n\n"
                   (tabulate (sorted result :key :command)
                     :headers "keys"
-                    :maxcolwidths [None None 50])
+                    :maxcolwidths [None 20 45])
                   "\n\n")))
 
 (defn :async [rpc] prompts [* result #** kwargs]
