@@ -56,14 +56,21 @@ The main REPL where we read output and issue commands.
   "Takes input, then passes it to the appropriate action."
   (while True
     (try
-      (let [line (await (.get state.input-queue))]
-        (when line
-          (print-input line)
-          (await (server-rpc :method "chat"
-                             :chat state.chat
-                             :line line
-                             :prompt-name state.prompt-name 
-                             :provider state.provider))))
+      (let [action (await (.get state.input-queue))]
+        (when action
+          (match (:method action None)
+            "chat"
+            (await (server-rpc :method "chat"
+                               :chat state.chat
+                               :line (:line action)
+                               :prompt-name state.prompt-name 
+                               :provider state.provider))
+            "vdb"
+            (await (server-rpc :method "vdb"
+                               :chat state.chat
+                               :query (:line action)
+                               :prompt-name state.prompt-name 
+                               :provider state.provider)))))
       (except [e [Exception]]
         (print-exception e)))))
 

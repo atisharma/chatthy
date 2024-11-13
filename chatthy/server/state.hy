@@ -194,3 +194,20 @@ Chats and account details are stored as json files.
                            :last-accessed (time)
                            :public-key pub-key))))) ; store the provided key for next time
 
+
+;; * prompts
+;; -----------------------------------------------------------------------------
+
+(defmethod get-prompts [#^ str profile]
+  "Get merged user-defined and server-defined prompts."
+  (let [prompts (:prompts (get-account profile))]
+    (| (:prompts cfg) prompts)))
+
+(defmethod get-prompt [#^ str profile #^ str prompt-name]
+  "Get a prompt by name."
+  (let [prompts (get-prompts profile)]
+    (.get prompts prompt-name (:default prompts))))
+
+(defmethod update-prompt [#^ str profile #^ str prompt-name #^ str prompt]
+  "Set/overwrite a prompt."
+  (update-account profile :prompts (| prompts {name prompt})))

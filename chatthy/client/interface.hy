@@ -12,6 +12,7 @@ The client's offered RPCs.
 (import json)
 (import atexit)
 
+(import tabulate [tabulate])
 (import time [time])
 (import traceback [format-exception])
 
@@ -25,6 +26,8 @@ The client's offered RPCs.
                                 status-text
                                 title-text])
 
+
+;; TODO max-col-widths based on terminal size
 
 ;; * status
 ;; -----------------------------------------------------------------------------
@@ -120,6 +123,28 @@ The client's offered RPCs.
       (output-text f"- {c}\n"))
     (output-text "  (no chats)"))
   (output-text "\n\n"))
+
+(defn :async [rpc] commands [* result #** kwargs]
+  "Display the list of commands advertised by the server."
+  (output-text (+ "❕Server commands available:\n\n"
+                  (tabulate (sorted result :key :command)
+                    :headers "keys"
+                    :maxcolwidths [None None 50])
+                  "\n\n")))
+
+(defn :async [rpc] prompts [* result #** kwargs]
+  "Display the list of prompts known to the server."
+  (output-text (+ "❕Prompts available:\n\n"
+                  (tabulate (sorted result :key :prompt)
+                    :headers "keys"
+                    :maxcolwidths [None 50])
+                  "\n\n")))
+
+(defn :async [rpc] providers [* result #** kwargs]
+  "Display the list of providers known to the server."
+  (output-text (+ "❕Providers available:\n\n"
+                  (.join "\n" result)
+                  "\n\n")))
 
 (defn :async [rpc] workspace [* result #** kwargs]
   "Print the files in the current workspace, which are received as a list of dicts,

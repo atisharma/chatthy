@@ -27,7 +27,7 @@ dependencies = [
     "hy",
     "hyjinx[zmq]",
     "hyrule",
-    "pansi",
+    "pansi==2020.7.3",
     "platformdirs",
     "prompt_toolkit",
     "pygments",

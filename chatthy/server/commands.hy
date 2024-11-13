@@ -20,6 +20,7 @@ Implements server's RPC methods (commands)
                             workspace-messages])
 (import chatthy.server.state [cfg
                               socket
+                              get-prompts get-prompt update-prompt
                               get-chat set-chat delete-chat copy-chat rename-chat list-chats
                               get-ws write-ws drop-ws rename-ws list-ws
                               get-account set-account update-account])
@@ -51,6 +52,7 @@ Implements server's RPC methods (commands)
 
 (defn :async [rpc] account [* sid profile #** kwargs]
   "Show account details."
+  ;; TODO return dict, not text
   (let [d-account (get-account profile)]
     (.pop d-account "prompts" None)
     (await (echo :sid sid
@@ -60,55 +62,52 @@ Implements server's RPC methods (commands)
 
 (defn :async [rpc] prompts [* sid profile [name None] [prompt None] #** kwargs]
   "Gets/sets a named system prompt for a user. With just name given, edit it. With no kwargs, list them."
-  (let [prompts (| {"default" (:system cfg)}
-                   (:prompts (get-account profile) {}))]
+  (let [prompts (get-prompts profile)]
     (cond
+      ;; client has specified both prompt name and text, so set the prompt
       (and name prompt)
-      (update-account profile :prompts (| prompts {name prompt}))
+      (update-prompt profile prompt-name prompt)
 
+      ;; client hasn't specified prompt text, so just get and return
       (and name)
       (await (client-rpc :sid sid
                          :method "set_prompt"
                          :name name
                          :prompt (.get prompts name "")))
 
-      ;; TODO return the dict, not a tabulated string
-      ;; then manage them client-side
+      ;; client specifies nothing, so just list them
       :else
-      (await (echo :sid sid
-                   :result (+ "prompts\n\n"
-                              (tabulate (list (.items prompts))
-                                        :headers ["name" "prompt text"]
-                                        :maxcolwidths [None 60])))))))
+      (await (client-rpc sid "prompts"
+                         :result (sorted
+                                   (lfor [k v] (.items prompts)
+                                     {"prompt" k "prompt text" v})
+                                   :key :prompt))))))
 
 (defn :async [rpc] providers [* sid #** kwargs]
   "List the providers available to clients."
-  (await (echo :sid sid
-               :result (.join "\n"
-                         ["providers available:\n"
-                          #* (sorted (list (.keys (:providers cfg))))]))))
+  (await (client-rpc sid "providers"
+                     :result (sorted (list (.keys (:providers cfg)))))))
 
 (defn :async [rpc] commands [* sid #** kwargs]
   "List the commands advertised to clients."
-  (await (echo :sid sid
-               :result (+ "commands available:\n\n"
-                          (tabulate
-                            (sorted
-                              (lfor [k v] (.items rpcs)
-                                :if v.__doc__
-                                (let [sig (->> (signature v)
-                                               (str)
-                                               (re.sub r"sid, " "")
-                                               (re.sub r", \*\*kwargs" "")
-                                               (re.sub r"\(\*" "")
-                                               (re.sub r"\)" "")
-                                               (re.sub r", " " :")
-                                               (re.sub r" :profile" "")
-                                               (re.sub r" :chat" "")
-                                               (re.sub r"=[\w]+" ""))]
-                                  #( k sig v.__doc__))))
-                            :headers ["command" "kwargs" "doc"]
-                            :maxcolwidths [None None 50])))))
+  (await (client-rpc sid
+                     "commands"
+                     :result (lfor [k v] (.items rpcs)
+                               :if v.__doc__
+                               (let [sig (->> (signature v)
+                                              (str)
+                                              (re.sub r"sid, " "")
+                                              (re.sub r", \*\*kwargs" "")
+                                              (re.sub r"\(\*" "")
+                                              (re.sub r"\)" "")
+                                              (re.sub r", " " :")
+                                              (re.sub r" :profile" "")
+                                              (re.sub r" :provider" "")
+                                              (re.sub r" :chat" "")
+                                              (re.sub r"=['\w]+" ""))]
+                                 {"command" k
+                                  "kwargs" sig
+                                  "docstring" v.__doc__})))))
 
 (defn :async [rpc] vdbinfo [* sid profile #** kwargs]
   "Give info on the state of the vdb."
@@ -189,10 +188,10 @@ Implements server's RPC methods (commands)
 
 (defn :async [rpc] chat [* sid profile chat prompt-name line provider #** kwargs]
   ;; no docstring so it doesn't advertise to clients
+  (await (client-rpc sid "echo" :result {"role" "user" "content" line}))
   (let [reply ""
         chunk ""
-        prompts (:prompts (get-account profile))
-        system-prompt (.get prompts prompt-name (:system cfg))
+        system-prompt (get-prompt profile prompt-name)
         system-msg {"role" "system" "content" system-prompt}
         usr-msg {"role" "user" "content" line "timestamp" (time)}
         ws-msgs (workspace-messages profile)
@@ -215,19 +214,19 @@ Implements server's RPC methods (commands)
   (await (client-rpc sid "status" :result "ready ✅")))
 
 (defn :async [rpc] vdb [* sid profile chat prompt-name query provider #** kwargs]
-  "Use RAG from the vdb alongside the chat context to respond to the query."
+  "Do RAG using the vdb alongside the chat context to respond to the query.
+  `prompt_name` optionally specifies use of a particular prompt (by name).
+  `query` specifies the text of the query."
   ;; TODO consolidate with `chat` rpc.
-  ;; TODO tidy advertised function sig - maybe rpc argument?
   ;; FIXME  guard against final user message being too long;
   ;;        recursion depth in `truncate`?
   (await (client-rpc sid "status" :result "querying ⏳"))
-  (await (client-rpc sid "echo" :result {"role" "user" "content" f"{query}"}))
+  (await (client-rpc sid "echo" :result {"role" "user" "content" query}))
   (let [context-length (:context-length (get cfg "providers" provider) (:context-length cfg 30000))
         rag-line (await (vdb-extracts query :profile profile :max-length (/ context-length 2)))
         reply ""
         chunk ""
-        prompts (:prompts (get-account profile))
-        system-prompt (.get prompts prompt-name (:system cfg))
+        system-prompt (get-prompt profile prompt-name)
         system-msg {"role" "system" "content" system-prompt}
         rag-usr-msg {"role" "user" "content" rag-line}
         saved-usr-msg {"role" "user" "content" query "timestamp" (time) "tool" "vdb"}

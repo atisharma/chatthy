@@ -13,6 +13,7 @@ Most readline-compatible bindings are implemented.
     F1                  show this help text
     Ctrl-q              quit
     Ctrl-l              refresh message window
+    Ctrl-v              enable RAG using the vdb for this input
     Alt-m               toggle multiline input
     Shift-Tab           toggle focus between input and output
     Tab                 input a command

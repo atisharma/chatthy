@@ -72,7 +72,14 @@ Prompt-toolkit application for simple chat REPL.
   "Put the input in the queue."
   ;; the put is async, but called from sync function
   (when buffer.text
-    (sync-await (.put state.input-queue buffer.text)))
+    (sync-await (.put state.input-queue
+                      {"method" (if input-field.vdb
+                                  "vdb"
+                                  "chat")
+                       "line" buffer.text}))
+    ;; Explicitly require Ctrl-v to use RAG every time
+    (setv input-field.vdb False))
+  (mode-text)
   ;; TODO when image teed up, put the image-message in appropriately
   None)
   
@@ -163,6 +170,7 @@ Prompt-toolkit application for simple chat REPL.
                             :accept-handler accept-handler))
 (setv input-field.multiline False)
 (setv input-field.command False)
+(setv input-field.vdb False)
 (setv input-field.buffer.multiline (Condition (fn [] input-field.multiline)))
   
 
@@ -239,19 +247,15 @@ Prompt-toolkit application for simple chat REPL.
 
 (defn mode-text []
   "Set the mode field text. Parses ANSI codes."
-  (cond
-    (and input-field.multiline input-field.command)
-    (setv mode-field.text (ANSI f"{ansi.blue}{ansi.rev}multiline{ansi.reset} {ansi.red}{ansi.rev}command"))
-
-    input-field.command
-    (setv mode-field.text (ANSI f"{ansi.red}{ansi.rev}command"))
-
-    input-field.multiline
-    (setv mode-field.text (ANSI f"{ansi.blue}{ansi.rev}multiline"))
-
-    :else
-    (setv mode-field.text ""))
-  (invalidate))
+  (let [modeline ""]
+    (when input-field.command
+      (setv modeline (.join " " [modeline f"{ansi.red}{ansi.rev}command{ansi.reset}"])))
+    (when input-field.multiline
+      (setv modeline (.join " " [modeline f"{ansi.blue}{ansi.rev}multiline{ansi.reset}"])))
+    (when input-field.vdb
+      (setv modeline (.join " " [modeline f"{ansi.cyan}{ansi.rev}vdb{ansi.reset}"])))
+    (setv mode-field.text (ANSI modeline))
+    (invalidate)))
 
 
 ;; * global key bindings
@@ -328,6 +332,11 @@ Prompt-toolkit application for simple chat REPL.
 (defn [(kb.add "s-tab" :filter (has-focus input-field))] _ [event]
   "Pressing shift-tab will toggle focus between input and output."
   (event.app.layout.focus output-field))
+
+(defn [(kb.add "c-v" :filter (has-focus input-field))] _ [event]
+  "Pressing Ctrl-v will toggle vdb RAG."
+  (setv input-field.vdb (not input-field.vdb))
+  (mode-text))
 
 (defn [(kb.add "escape" "m" :filter input-field.buffer.multiline)] _ [event]
   "Pressing Escape-m (Alt-m) will toggle multi-line input."
