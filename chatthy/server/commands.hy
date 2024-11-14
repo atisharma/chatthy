@@ -13,6 +13,8 @@ Implements server's RPC methods (commands)
 (import time [time])
 
 (import trag [retrieve])
+(require trag.template [deftemplate])
+
 (import chatthy [__version__])
 (import chatthy.server.completions [stream-completion truncate])
 (import chatthy.embeddings [token-count])
@@ -27,6 +29,8 @@ Implements server's RPC methods (commands)
                               get-account set-account update-account])
 
 
+(deftemplate summary)
+
 ;; * Client RPC message handling
 ;; -----------------------------------------------------------------------------
 
@@ -40,13 +44,13 @@ Implements server's RPC methods (commands)
 ;; -----------------------------------------------------------------------------
 
 (defn :async [rpc] status [* sid #** kwargs]
-  ;; no docstring so it doesn't advertise to clients
-  ;; regular status update
+  "HIDDEN
+  Respond to a status request with a status update."
   (await (client-rpc sid "status" :result f"v{__version__} ✅")))
 
 (defn :async [rpc] echo [* sid result #** kwargs]
-  ;; no docstring so it doesn't advertise to clients
-  ;; send a chat message to the client
+  "HIDDEN
+  Send a chat message to the client."
   (await (client-rpc sid
                      "echo"
                      :result {"role" "server" "content" result})))
@@ -91,10 +95,12 @@ Implements server's RPC methods (commands)
 
 (defn :async [rpc] commands [* sid #** kwargs]
   "List the commands advertised to clients."
+  ;; RPCs with docstring starting with 'HIDDEN' are not advertised.
   (await (client-rpc sid
                      "commands"
                      :result (lfor [k v] (.items rpcs)
-                               :if v.__doc__
+                               :if (and v.__doc__
+                                        (not (.startwith v.__doc__ "HIDDEN")))
                                (let [sig (->> (signature v)
                                               (str)
                                               (re.sub r"sid, " "")
@@ -119,7 +125,7 @@ Implements server's RPC methods (commands)
 
 
 ;; * chat management
-;; TODO slight inconsistency between ws and chat management
+;; TODO smooth slight inconsistency between ws and chat management
 ;; -----------------------------------------------------------------------------
 
 (defn :async [rpc] chats [* sid profile #** kwargs]
@@ -216,8 +222,19 @@ Implements server's RPC methods (commands)
                                                             "length" (token-count (get-ws profile fname))})))))
 
 
-;; * management of messages
+;; * management of messages, generation
 ;; -----------------------------------------------------------------------------
+
+(defn :async stream-reply [sid chat provider messages #** kwargs]
+  "Request and stream a reply from the provider's API."
+  (let [reply ""]
+    (for [:async chunk (stream-completion provider messages #** kwargs)]
+      (+= reply chunk)
+      (await (client-rpc sid "chunk" :result chunk :chat chat))
+      (await (client-rpc sid "status" :result "streaming ✅")))
+    (await (client-rpc sid "chunk" :result "\n\n" :chat chat))
+    (await (client-rpc sid "status" :result "ready ✅"))
+    reply))
 
 (defn :async [rpc] messages [* sid profile chat #** kwargs]
   ;; no docstring so it doesn't advertise to clients
@@ -233,12 +250,15 @@ Implements server's RPC methods (commands)
     (set-chat messages profile chat))
   (await (messages :sid sid :profile profile :chat chat)))
 
+;; TODO consolidate `chat`, `vdb` and `summ` rpcs.
+
 (defn :async [rpc] chat [* sid profile chat prompt-name line provider #** kwargs]
+  "HIDDEN
+  Normal chat RPC, return input to client followed by a stream of the reply.
+  Add the new message pair to the saved chat."
   ;; no docstring so it doesn't advertise to clients
   (await (client-rpc sid "echo" :result {"role" "user" "content" line}))
-  (let [reply ""
-        chunk ""
-        system-prompt (get-prompt profile prompt-name)
+  (let [system-prompt (get-prompt profile prompt-name)
         system-msg {"role" "system" "content" system-prompt}
         usr-msg {"role" "user" "content" line "timestamp" (time)}
         ws-msgs (workspace-messages profile)
@@ -249,33 +269,25 @@ Implements server's RPC methods (commands)
                                                (token-count ws-msgs)
                                                (token-count line))
                                      :provider provider)
-        sent-messages [system-msg #* ws-msgs #* messages usr-msg]]
-    (for [:async chunk (stream-completion provider sent-messages #** kwargs)]
-      (+= reply chunk)
-      (await (client-rpc sid "status" :result "streaming ✅"))
-      (await (client-rpc sid "chunk" :result chunk :chat chat)))
-    (await (client-rpc sid "chunk" :result "\n\n" :chat chat))
+        sent-messages [system-msg #* ws-msgs #* messages usr-msg]
+        reply (await (stream-reply sid chat provider sent-messages #** kwargs))]
     (.append saved-messages usr-msg)
     (.append saved-messages {"role" "assistant" "content" (.strip reply) "timestamp" (time)})
-    (set-chat saved-messages profile chat))
-  (await (client-rpc sid "status" :result "ready ✅")))
+    (set-chat saved-messages profile chat)))
 
 (defn :async [rpc] vdb [* sid profile chat prompt-name query provider #** kwargs]
   "Do RAG using the vdb alongside the chat context to respond to the query.
   `prompt_name` optionally specifies use of a particular prompt (by name).
   `query` specifies the text of the query."
-  ;; TODO consolidate with `chat` rpc.
   ;; FIXME  guard against final user message being too long;
   ;;        recursion depth in `truncate`?
   (await (client-rpc sid "status" :result "querying ⏳"))
   (await (client-rpc sid "echo" :result {"role" "user" "content" query}))
   (let [context-length (:context-length (get cfg "providers" provider) (:context-length cfg 30000))
-        rag-line (await (vdb-extracts query :profile profile :max-length (/ context-length 2)))
-        reply ""
-        chunk ""
+        rag-instruction (await (vdb-extracts query :profile profile :max-length (/ context-length 2)))
         system-prompt (get-prompt profile prompt-name)
         system-msg {"role" "system" "content" system-prompt}
-        rag-usr-msg {"role" "user" "content" rag-line}
+        rag-usr-msg {"role" "user" "content" rag-instruction}
         saved-usr-msg {"role" "user" "content" query "timestamp" (time) "tool" "vdb"}
         ws-msgs (workspace-messages profile)
         saved-messages (get-chat profile chat)
@@ -283,16 +295,54 @@ Implements server's RPC methods (commands)
                                      :space (+ (:max-tokens cfg 600)
                                                (token-count system-prompt)
                                                (token-count ws-msgs)
-                                               (token-count rag-line))
+                                               (token-count rag-instruction))
                                      :provider provider)
-        sent-messages [system-msg #* ws-msgs #* messages rag-usr-msg]]
-    (for [:async chunk (stream-completion provider sent-messages #** kwargs)]
-      (+= reply chunk)
-      (await (client-rpc sid "status" :result "streaming ✅"))
-      (await (client-rpc sid "chunk" :result chunk :chat chat)))
-    (await (client-rpc sid "chunk" :result "\n\n" :chat chat))
+        sent-messages [system-msg #* ws-msgs #* messages rag-usr-msg]
+        reply (await (stream-reply sid chat provider sent-messages #** kwargs))]
     (.append saved-messages saved-usr-msg)
     (.append saved-messages {"role" "assistant" "content" (extract-output reply) "timestamp" (time)})
-    (set-chat saved-messages profile chat))
-  (await (client-rpc sid "status" :result "ready ✅")))
+    (set-chat saved-messages profile chat)))
+
+(defn :async [rpc] summ 
+  [*
+   sid
+   profile
+   chat
+   prompt-name
+   provider
+   [summary_type "summary"]
+   [text ""]
+   [arxiv False]
+   [news False]
+   [url False]
+   [wikipedia False]
+   [youtube False]
+   #** kwargs]
+  "Context-free summary of a source. See `ws` for usage.
+  Note, `kwargs` are passed to summary template, not model."
+  (let [system-prompt (get-prompt profile prompt-name)
+        system-msg {"role" "system" "content" system-prompt}
+        source (cond
+                 text "[text removed for length]"
+                 arxiv f"arXiv search: {arxiv}"
+                 news f"news: {news}"
+                 url f"url: {url}"
+                 wikipedia f"wikipedia: {wikipedia}"
+                 youtube f"YouTube: {youtube}")
+        text (cond
+               text text
+               youtube (retrieve.youtube youtube :punctuate (:punctuate cfg False))
+               url (retrieve.url url)
+               arxiv (retrieve.arxiv arxiv)
+               news (retrieve.ddg-news news)
+               wikipedia (retrieve.wikipedia wikipedia))
+        instruction {"role" "user" "content" (summary summary_type :text text #** kwargs)}
+        saved-usr-msg {"role" "user" "content" f"Summarize: {summary_type}\n{source}" "timestamp" (time)}
+        saved-messages (get-chat profile chat)
+        sent-messages [system-msg instruction]]
+    (await (client-rpc sid "echo" :result saved-usr-msg))
+    (let [reply (await (stream-reply sid chat provider sent-messages))]
+      (.append saved-messages saved-usr-msg)
+      (.append saved-messages {"role" "assistant" "content" (.strip reply) "timestamp" (time)})
+      (set-chat saved-messages profile chat))))
 

@@ -21,15 +21,15 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 
 ### functionality
 
-- [ ] summaries and standard client instructions (trag)
+- [x] summaries and standard client instructions (trag)
 - [x] context workspace (load/drop files)
-- [ ] context workspace - bench/suspend files (checkbox form?)
 - [x] client inject from file
 - [x] client inject from other sources, e.g. youtube (trag)
 - [x] server use vdb context on request
 - [x] templates for standard instruction requests (trag)
+- [ ] context workspace - bench/suspend files (hidden by filename)
 - [ ] (auto) tools (evolve from llama-farm -> trag)
-- [ ] server use vdb context at LLM will
+- [ ] server use vdb context at LLM will (tool)
 - [ ] iterative workflows (refer to llama-farm)
 - [ ] tool chains
 - [ ] image sending

@@ -90,7 +90,7 @@ Prompt-toolkit application for simple chat REPL.
     (let [arglist (shlex.split buffer.text)
           method (first arglist)
           ;; strip leading : from kws, so :key -> "key"
-          ;; and mangle kw
+          ;; and mangle kw, so "-" -> "_"
           kwargs (dfor [k v] (pairwise (rest arglist))
                    (mangle (re.sub "^:" "" k)) v)]
       (assoc kwargs "chat" (:chat kwargs state.chat)) ; default to current chat
