@@ -12,6 +12,7 @@ The client's offered RPCs.
 (import json)
 (import atexit)
 
+(import shutil [get-terminal-size])
 (import tabulate [tabulate])
 (import time [time])
 (import traceback [format-exception])
@@ -27,7 +28,7 @@ The client's offered RPCs.
                                 title-text])
 
 
-;; TODO max-col-widths based on terminal size
+;; TODO consider tabulated over tabulate
 
 ;; * status
 ;; -----------------------------------------------------------------------------
@@ -61,7 +62,7 @@ The client's offered RPCs.
   (sync-await (echo :result {"role" "user" "content" line})))
 
 (defn print-exception [exception [s ""]]
-  (output-text f"❌Client exception\n```py3tb\n")
+  (output-text f"# ❌Client exception\n```py3tb\n")
   (output-text (.join "\n" (format-exception exception)))
   (output-text f"\n```\n{s}\n\n"))
 
@@ -117,7 +118,7 @@ The client's offered RPCs.
 
 (defn :async [rpc] chats [* result #** kwargs]
   "Print the saved chats, which are received as a list."
-  (output-text f"## Saved chats\n")
+  (output-text f"# ❕Saved chats\n")
   (if result
     (for [c result]
       (output-text f"- {c}\n"))
@@ -126,23 +127,23 @@ The client's offered RPCs.
 
 (defn :async [rpc] commands [* result #** kwargs]
   "Display the list of commands advertised by the server."
-  (output-text (+ "❕Server commands available:\n\n"
+  (output-text (+ "# ❕Server commands available:\n\n"
                   (tabulate (sorted result :key :command)
                     :headers "keys"
-                    :maxcolwidths [None 20 45])
+                    :maxcolwidths [12 20 (- (. (get-terminal-size :fallback [80 20]) columns) 37)])
                   "\n\n")))
 
 (defn :async [rpc] prompts [* result #** kwargs]
   "Display the list of prompts known to the server."
-  (output-text (+ "❕Prompts available:\n\n"
+  (output-text (+ "# ❕Prompts available:\n\n"
                   (tabulate (sorted result :key :prompt)
                     :headers "keys"
-                    :maxcolwidths [None 50])
+                    :maxcolwidths [12 (- (. (get-terminal-size :fallback [80 20]) columns) 17)])
                   "\n\n")))
 
 (defn :async [rpc] providers [* result #** kwargs]
   "Display the list of providers known to the server."
-  (output-text (+ "❕Providers available:\n\n"
+  (output-text (+ "# ❕Providers available:\n\n"
                   (.join "\n" result)
                   "\n\n")))
 
@@ -150,11 +151,14 @@ The client's offered RPCs.
   "Print the files in the current workspace, which are received as a list of dicts,
   `{name length}`."
   (setv state.workspace-count 0)
-  (output-text f"## Files in current workspace\n")
+  (output-text f"# ❕Files in current workspace (✓ denotes active)\n")
   (if result
-    (for [c result]
-      (output-text f"- {(:name c)} ({(:length c)})\n")
-      (+= state.workspace-count (:length c)))
+    (for [wsf result]
+      (let [ignored-str (if (:ignored wsf) " " "✓")
+            length (:length wsf)
+            name (:name wsf)]
+        (output-text f"- {ignored-str} {name} ({length})\n")
+        (+= state.workspace-count length)))
     (output-text "  (no files)"))
   (output-text "\n\n"))
 

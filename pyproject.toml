@@ -31,12 +31,13 @@ dependencies = [
     "platformdirs",
     "prompt_toolkit",
     "pygments",
+    "tabulate[widechars]",
     "tiktoken",
     "toolz"
 ]
 
 [project.optional-dependencies]
-server = ["hyjinx[dev]", "tabulate", "trag", "fvdb"]
+server = ["hyjinx[dev]", "trag", "fvdb"]
 
 [project.urls]
 Repository = "https://github.com/atisharma/chatthy"

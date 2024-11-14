@@ -95,9 +95,11 @@ Chats and account details are stored as json files.
     (Path (profile-dir profile "workspace") fname)
     (Path (profile-dir profile "workspace") to)))
 
-(defmethod list-ws [#^ str profile]
-  "List files available in a profile's workspace."
+(defmethod list-ws [#^ str profile * [include-ignored True]]
+  "List files available in a profile's workspace.
+  Files starting with \"__\" are ignored."
   (lfor f (filenames (profile-dir profile "workspace"))
+    :if (or include-ignored (not (.startswith f "__")))
     (. (Path f) name)))
 
 

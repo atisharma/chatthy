@@ -100,7 +100,7 @@ Implements server's RPC methods (commands)
                      "commands"
                      :result (lfor [k v] (.items rpcs)
                                :if (and v.__doc__
-                                        (not (.startwith v.__doc__ "HIDDEN")))
+                                        (not (.startswith v.__doc__ "HIDDEN")))
                                (let [sig (->> (signature v)
                                               (str)
                                               (re.sub r"sid, " "")
@@ -114,10 +114,10 @@ Implements server's RPC methods (commands)
                                               (re.sub r"=['\w]+" ""))]
                                  {"command" k
                                   "kwargs" sig
-                                  "docstring" v.__doc__})))))
+                                  "docstring" (.replace v.__doc__ "  " "\n")})))))
 
 (defn :async [rpc] vdbinfo [* sid profile #** kwargs]
-  "Give info on the state of the vdb."
+  "Show info on the state of the vdb."
   (let [d-info (await (vdb-info :profile profile))]
     (await (echo :sid sid
                  :result (+ f"vdb for {profile}\n\n"
@@ -157,6 +157,7 @@ Implements server's RPC methods (commands)
    sid
    profile
    [drop False]
+   [ignore False]
    [fname False]
    [text ""]
    [arxiv False]
@@ -165,14 +166,16 @@ Implements server's RPC methods (commands)
    [wikipedia False]
    [youtube False]
    #** kwargs]
-  "With kwargs `:drop fname`, completely remove file `drop` from the profile's workspace.
-  With kwarg `:fname fname`, store `:text \"text\"` into a file in the profile's current workspace.
+  "With kwarg `:drop fname`, completely remove file `drop` from the profile's workspace.
+  With `:ignore fname`, toggle ignore status of file `ignore`.
+  With `:fname fname`, store `:text \"text\"` into a file in the profile's current workspace.
   With `:youtube id`, put the transcript of a youtube video in the workspace.
   With `:url \"url\"`, put a the contents of a url the workspace.
   With `:arxiv \"search topic\"`, put a the results of an arXiv search (abstracts) in the workspace.
   With `:wikipedia \"topic\"`, put a wikipedia article in the workspace.
-  Otherwise List files available in a profile's workspace."
+  Otherwise list files available in a profile's workspace."
   (cond
+    ;; ws files from sources
     youtube
     (let [text (retrieve.youtube youtube :punctuate (:punctuate cfg False))
           fname f"youtube-{youtube}"]
@@ -187,19 +190,19 @@ Implements server's RPC methods (commands)
 
     arxiv
     (let [text (retrieve.arxiv arxiv)
-          fname (short-id arxiv)]
+          fname (+ "arxiv-" (short-id arxiv))]
       (write-ws profile fname text)
-      (await (client-rpc sid "info" :result f"Loaded {url} into context workspace, saved as '{fname}'.")))
+      (await (client-rpc sid "info" :result f"Loaded arXiv search into context workspace, saved as '{fname}'.")))
 
     news
     (let [text (retrieve.ddg-news news)
-          fname (short-id news)]
+          fname (+ "news-" (short-id news))]
       (write-ws profile fname text)
       (await (client-rpc sid "info" :result f"Loaded news query into context workspace, saved as '{fname}'.")))
 
     wikipedia
     (let [text (retrieve.wikipedia wikipedia)
-          fname (short-id wikipedia)]
+          fname (+ "wikipedia-" (short-id wikipedia))]
       (write-ws profile fname text)
       (await (client-rpc sid "info" :result f"Loaded wikipedia query into context workspace, saved as '{fname}'.")))
 
@@ -208,17 +211,28 @@ Implements server's RPC methods (commands)
       (write-ws profile fname text)
       (await (client-rpc sid "info" :result f"Loaded file '{fname}' into context workspace.")))
 
+    ;; print contents
     fname
     (await (client-rpc sid "info" :result (.join "\n\n" [f"Contents of workspace file {fname}:"
                                                          (get-ws profile fname)])))
 
+    ;; ws file management
     drop
     (do
       (drop-ws profile drop)
       (await (client-rpc sid "info" :result f"Dropped '{drop}' from context workspace.")))
 
+    ignore
+    (let [new-fname (if (.startswith ignore "__")
+                      (cut ignore 2 None)
+                      (+ "__" ignore))]
+      (rename-ws profile ignore new-fname)
+      (await (client-rpc sid "info" :result f"Toggled ignore for '{ignore}' in context workspace.")))
+
+    ;; else just list files
     :else (await (client-rpc sid "workspace" :result (lfor fname (list-ws profile)
                                                            {"name" fname
+                                                            "ignored" (.startswith fname "__")
                                                             "length" (token-count (get-ws profile fname))})))))
 
 
@@ -250,7 +264,7 @@ Implements server's RPC methods (commands)
     (set-chat messages profile chat))
   (await (messages :sid sid :profile profile :chat chat)))
 
-;; TODO consolidate `chat`, `vdb` and `summ` rpcs.
+;; TODO consolidate `chat`, `vdb` and `smry` rpcs.
 
 (defn :async [rpc] chat [* sid profile chat prompt-name line provider #** kwargs]
   "HIDDEN
@@ -303,7 +317,7 @@ Implements server's RPC methods (commands)
     (.append saved-messages {"role" "assistant" "content" (extract-output reply) "timestamp" (time)})
     (set-chat saved-messages profile chat)))
 
-(defn :async [rpc] summ 
+(defn :async [rpc] smry 
   [*
    sid
    profile
