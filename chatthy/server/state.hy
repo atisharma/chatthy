@@ -4,7 +4,7 @@ Manages global mutable server state, and its persistence.
 Chats and account details are stored as json files.
 "
 
-(require hyrule.argmove [-> ->>])
+(require hyrule.argmove [-> ->> unless])
 
 (import hyrule [assoc])
 
@@ -109,17 +109,18 @@ Chats and account details are stored as json files.
 
 (setv vdbs {})
 
-(defn :async get-vdb [#^ str profile]
+(defn :async get-vdb [#^ str profile * [reload False]]
   "Return the vdb for that profile.
   Create one if it doesn't exist."
   (let [p (sanitize profile)
         vdb (.get vdbs p None)]
-    (if vdb
+    (if (and vdb (not reload))
       vdb ; use if it exists
-      (do ; or create a new one
+      (do ; or create/load a new one
         (let [new-vdb (await (asyncio.to-thread faiss (profile-dir p "vdb")))]
           (assoc vdbs p new-vdb)
-          (write new-vdb)
+          (unless reload
+            (write new-vdb))
           new-vdb)))))
 
 

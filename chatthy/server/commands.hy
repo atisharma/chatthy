@@ -18,7 +18,7 @@ Implements server's RPC methods (commands)
 (import chatthy [__version__])
 (import chatthy.server.completions [stream-completion truncate])
 (import chatthy.embeddings [token-count])
-(import chatthy.server.rag [vdb-extracts vdb-info
+(import chatthy.server.rag [vdb-extracts vdb-info vdb-reload
                             extract-output
                             workspace-messages])
 (import chatthy.server.state [cfg
@@ -123,6 +123,10 @@ Implements server's RPC methods (commands)
                  :result (+ f"vdb for {profile}\n\n"
                             (tabulate (.items d-info)))))))
 
+(defn :async [rpc] vdbreload [* sid profile #** kwargs]
+  "Reload the vdb."
+  (await (vdb-reload :profile profile)))
+
 
 ;; * chat management
 ;; TODO smooth slight inconsistency between ws and chat management
@@ -180,7 +184,7 @@ Implements server's RPC methods (commands)
     (let [text (retrieve.youtube youtube :punctuate (:punctuate cfg False))
           fname f"youtube-{youtube}"]
       (write-ws profile fname text)
-      (await (client-rpc sid "info" :result f"Loaded transcript for YouTube video {id} into context workspace.")))
+      (await (client-rpc sid "info" :result f"Loaded transcript for YouTube video {youtube} into context workspace.")))
 
     url
     (let [text (retrieve.url url)
@@ -295,6 +299,7 @@ Implements server's RPC methods (commands)
   `query` specifies the text of the query."
   ;; FIXME  guard against final user message being too long;
   ;;        recursion depth in `truncate`?
+  ;; TODO offer as tool
   (await (client-rpc sid "status" :result "querying ⏳"))
   (await (client-rpc sid "echo" :result {"role" "user" "content" query}))
   (let [context-length (:context-length (get cfg "providers" provider) (:context-length cfg 30000))

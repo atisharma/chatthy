@@ -19,20 +19,30 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] profiles (profile x personalities -> sets of chats)
 
 
-### functionality
+### context workspace
 
-- [x] summaries and standard client instructions (trag)
 - [x] context workspace (load/drop files)
 - [x] client inject from file
 - [x] client inject from other sources, e.g. youtube (trag)
-- [x] server use vdb context on request
 - [x] templates for standard instruction requests (trag)
-- [ ] context workspace - bench/suspend files (hidden by filename)
+- [x] context workspace - bench/suspend files (hidden by filename)
+
+
+### tool / agentic use
+
 - [ ] (auto) tools (evolve from llama-farm -> trag)
 - [ ] server use vdb context at LLM will (tool)
 - [ ] iterative workflows (refer to llama-farm)
 - [ ] tool chains
-- [ ] image sending
+
+
+### RAG
+
+- [x] summaries and standard client instructions (trag)
+- [x] server use vdb context on request
+- [ ] consider best method of pdf conversion / ingestion
+- [ ] full arxiv paper ingestion (fvdb)
+- [ ] vdb result reranking with context, and winnowing
 
 
 ### client interface
@@ -46,13 +56,15 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] client-side prompt editing
 - [ ] client-side chat/message editing (how? temporarily set the input field history?)
 - [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex, pylatexenc).
+- [ ] generation cancellation
 
 
-### misc
+### miscellaneous / extensions
 
+- [ ] design with multimodal models in mind
+- [ ] image sending and use
 - [x] use proper config dir (group?)
 - [ ] dump default conf if missing
-- [ ] consider best method of pdf ingestion
 
 
 ## intended functionality by package
@@ -66,34 +78,4 @@ tasks
 
 arXiv paper -> latex / md
 pdf paper -> latex / md
-
-
-### trag
-
-summaries and text reduction
-instruction templates
-RAG templates
-sources
-tools?
-
-
-### hyjinx
-
-streaming APIs (hyjinx.llm)
-zmq client/server abstraction (hyjinx.wire)
-
-
-### fvdb (no llm required)
-
-vdb
-split
-embeddings
-
-
-### chatthy (rubber-duckhy?)
-
-REPL interface
-chat persistence, management
-prompt persistence, management
-
 

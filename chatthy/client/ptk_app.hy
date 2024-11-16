@@ -100,33 +100,38 @@ Prompt-toolkit application for simple chat REPL.
 
 (defn client-command [method #** kwargs]
   "Client commands are parsed here."
-  (match method
-    "load" (match (first kwargs)
-             ;; TODO  image queueing up here
-             ;;       format and send to input queue
-             "chat" (set-chat :chat (:chat kwargs))
-             "image" (raise NotImplementedError)
-             "input" (input-text (slurp (:file kwargs)) :multiline True)
-             "ws" 
-             (let [fname (. (Path (:ws kwargs)) name)
-                   text (.strip (slurp (:ws kwargs)))]
-               (output-text f"{fname}\n\n")
-               (output-text f"{text}\n\n")
-               (sync-await (server-rpc "ws"
-                             :provider state.provider
-                             :fname fname
-                             :text text
-                             #** kwargs)))
-             "profile" (do
-                         (setv state.profile (:profile kwargs))
-                         (title-text))
-             "provider" (do
-                          (setv state.provider (:provider kwargs))
-                          (title-text))
-             "prompt" (do
-                        (setv state.prompt-name (:prompt kwargs))
-                        (title-text)))
-    _ (sync-await (server-rpc method :provider state.provider :prompt-name state.prompt-name #** kwargs))))
+  (match [method (first kwargs)]
+    ;; TODO  image queueing up here
+    ;;       format and send to input queue
+    ["load" "chat"]
+    (set-chat :chat (:chat kwargs))
+
+    [load "image"]
+    (raise NotImplementedError)
+
+    ["load" "input"]
+    (input-text (slurp (:file kwargs)) :multiline True)
+
+    ["load" "ws"] 
+    (let [fname (. (Path (:ws kwargs)) name)
+          text (.strip (slurp (:ws kwargs)))]
+      (output-text f"{fname}\n\n")
+      (output-text f"{text}\n\n")
+      (sync-await (server-rpc "ws"
+                    :provider state.provider
+                    :fname fname
+                    :text text
+                    #** kwargs)))
+
+    ["load" "profile"] (setv state.profile (:profile kwargs))
+
+    ["load" "provider"] (setv state.provider (:provider kwargs))
+
+    ["load" "prompt"] (setv state.prompt-name (:prompt kwargs))
+
+    _ (sync-await (server-rpc method :provider state.provider :prompt-name state.prompt-name #** kwargs)))
+
+  (title-text))
 
 
 ;; * setters, app state, text fields

@@ -9,7 +9,7 @@ Synthesise prompts for retreival-augmented generation.
 (import numpy [sum cumsum])
 (import re)
 
-(import fvdb [faiss info similar])
+(import fvdb [faiss info similar ingest])
 (import fvdb.summaries [extractive-summary])
 (import fvdb.embeddings [force-import])
 
@@ -81,6 +81,10 @@ Synthesise prompts for retreival-augmented generation.
   "Get information about the vdb."
   (info (await (get-vdb profile))))
 
+(defn :async vdb-reload [* #^ str profile]
+  "Reload the vdb."
+  (await (get-vdb profile :reload True)))
+
 
 ;; * form messages text from workspace files
 ;; -----------------------------------------------------------------------------
@@ -92,5 +96,5 @@ Synthesise prompts for retreival-augmented generation.
         msgs []]
     (for [doc docs]
       (.append msgs {"role" "user" "content" (retrieval "document" :source doc :text (get-ws profile doc))})
-      (.append msgs {"role" "assistant" "content" ""}))
+      (.append msgs {"role" "assistant" "content" " "}))
     msgs))
