@@ -92,9 +92,9 @@ Synthesise prompts for retreival-augmented generation.
 (defn workspace-messages [profile]
   "Make a list of user-assistant message pairs to inject at the beginning of the chat.
   Provide one user message per document, empty assistant reply."
-  (let [docs (list-ws profile)
+  (let [docs (list-ws profile :include-ignored False)
         msgs []]
     (for [doc docs]
       (.append msgs {"role" "user" "content" (retrieval "document" :source doc :text (get-ws profile doc))})
-      (.append msgs {"role" "assistant" "content" " "}))
+      (.append msgs {"role" "assistant" "content" "Contextual data noted."}))
     msgs))
