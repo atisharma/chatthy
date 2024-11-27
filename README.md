@@ -14,6 +14,7 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 
 - [x] basic chat persistence and management
 - [x] set, switch to saved system prompts (personalities)
+- [ ] manage prompts like chats (as files)
 - [x] chat truncation to token length
 - [x] rename chat
 - [x] profiles (profile x personalities -> sets of chats)
@@ -31,6 +32,7 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 ### tool / agentic use
 
 - [ ] (auto) tools (evolve from llama-farm -> trag)
+- [ ] user defined tool plugins
 - [ ] server use vdb context at LLM will (tool)
 - [ ] iterative workflows (refer to llama-farm)
 - [ ] tool chains
@@ -40,8 +42,8 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 
 - [x] summaries and standard client instructions (trag)
 - [x] server use vdb context on request
-- [ ] consider best method of pdf conversion / ingestion
-- [ ] full arxiv paper ingestion (fvdb)
+- [ ] consider best method of pdf conversion / ingestion, OOB
+- [ ] full arxiv paper ingestion (fvdb) - consolidate into one latex file OOB
 - [ ] vdb result reranking with context, and winnowing
 
 

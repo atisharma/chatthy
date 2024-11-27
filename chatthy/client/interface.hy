@@ -151,10 +151,10 @@ The client's offered RPCs.
   "Print the files in the current workspace, which are received as a list of dicts,
   `{name length}`."
   (setv state.workspace-count 0)
-  (output-text f"# ❕Files in current workspace (✓ denotes active)\n")
+  (output-text f"# ❕Files in current workspace (✓ active, x ignored)\n")
   (if result
     (for [wsf result]
-      (let [ignored-str (if (:ignored wsf) " " "✓")
+      (let [ignored-str (if (:ignored wsf) "x" "✓")
             length (:length wsf)
             name (:name wsf)]
         (output-text f"- {ignored-str} {name} ({length})\n")

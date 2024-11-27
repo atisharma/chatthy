@@ -31,7 +31,7 @@ dependencies = [
     "platformdirs",
     "prompt_toolkit",
     "pygments",
-    "tabulate[widechars]",
+    "tabulated[widechars]",
     "tiktoken",
     "toolz"
 ]
@@ -44,6 +44,7 @@ Repository = "https://github.com/atisharma/chatthy"
 
 [project.scripts]
 chatthy = "chatthy.__main__:run"
+chat = "chatthy.__main__:run"
 
 [tool.setuptools.dynamic]
 readme = {file = "README.md", content-type = "text/markdown"}

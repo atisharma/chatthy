@@ -5,7 +5,7 @@ Chat completion functions.
 (require hyrule [of])
 (require hyjinx [defmethod])
 
-(import hyjinx [llm first first last config hash-id coroutine])
+(import hyjinx [llm first last config hash-id coroutine])
 
 (import chatthy.embeddings [token-count])
 (import chatthy.server.state [cfg])

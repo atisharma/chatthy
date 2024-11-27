@@ -4,7 +4,7 @@ Manages global mutable server state, and its persistence.
 Chats and account details are stored as json files.
 "
 
-(require hyrule.argmove [-> ->> unless])
+(require hyrule [-> ->> unless])
 
 (import hyrule [assoc])
 
