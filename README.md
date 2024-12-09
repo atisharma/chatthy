@@ -36,6 +36,8 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [ ] server use vdb context at LLM will (tool)
 - [ ] iterative workflows (refer to llama-farm)
 - [ ] tool chains
+- [ ] file edit/write
+- [ ] allow model to manage workspace
 
 
 ### RAG
@@ -57,7 +59,7 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] cut/copy from output
 - [x] client-side prompt editing
 - [ ] client-side chat/message editing (how? temporarily set the input field history?)
-- [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex, pylatexenc).
+- [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex).
 - [ ] generation cancellation
 
 

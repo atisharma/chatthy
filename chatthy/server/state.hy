@@ -98,9 +98,11 @@ Chats and account details are stored as json files.
 (defmethod list-ws [#^ str profile * [include-ignored True]]
   "List files available in a profile's workspace.
   Files starting with \"__\" are ignored."
-  (lfor f (filenames (profile-dir profile "workspace"))
-    :if (or include-ignored (not (.startswith f "__")))
-    (. (Path f) name)))
+  (let [fnames (lfor f (filenames (profile-dir profile "workspace"))
+                 (. (Path f) name))]
+    (lfor fname fnames
+      :if (or include-ignored (not (.startswith fname "__")))
+      fname)))
 
 
 ;; * Vector DB
