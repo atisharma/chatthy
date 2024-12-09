@@ -188,7 +188,7 @@ Implements server's RPC methods (commands)
 
     url
     (let [text (retrieve.url url)
-          fname (retrieve.filename-from-url)]
+          fname (retrieve.filename-from-url url)]
       (write-ws profile fname text)
       (await (client-rpc sid "info" :result f"Loaded {url} into context workspace, saved as '{fname}'.")))
 
