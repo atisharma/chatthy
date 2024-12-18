@@ -110,7 +110,7 @@ Prompt-toolkit application for simple chat REPL.
     (raise NotImplementedError)
 
     ["load" "input"]
-    (input-text (slurp (:file kwargs)) :multiline True)
+    (input-text (slurp (:input kwargs)) :multiline True)
 
     ["load" "ws"] 
     (let [fname (. (Path (:ws kwargs)) name)
