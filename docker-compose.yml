@@ -1,0 +1,39 @@
+# Example docker-compose file.
+# Modify it to match your own needs.
+
+services:
+
+  build:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+
+  client:
+    restart: no
+    image: chatthy
+    ports:
+      - "23456:23456/tcp"
+    environment:
+      - NAME=client
+    volumes:
+      - ~/.config/chatthy:/root/.config/chatthy
+    stdin_open: true
+    tty: true
+    
+  server:
+    restart: always
+    image: chatthy
+    ports:
+      - "23456:23456/tcp"
+    environment:
+      - NAME=server
+    volumes:
+      - ~/.config/chatthy:/root/.config/chatthy
+      - ~/.config/fvdb:/root/.config/fvdb
+      - /var/lib/chatthy:/var/lib/chatthy
+      
+
+# EXPECTED FILES TO SET IN DOCKER-COMPOSE
+# .config/fvdb/config.toml
+# .config/chatthy/server.toml (if running the server)
+# .config/chatthy/client.toml (if running the client)

@@ -18,6 +18,7 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] chat truncation to token length
 - [x] rename chat
 - [x] profiles (profile x personalities -> sets of chats)
+- [ ] export chat to local file
 
 
 ### context workspace
@@ -37,6 +38,7 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [ ] iterative workflows (refer to llama-farm)
 - [ ] tool chains
 - [ ] file edit/write
+- [ ] file patch/diff
 - [ ] allow model to manage workspace
 
 
@@ -57,6 +59,7 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] decent REPL
 - [x] REPL command mode
 - [x] cut/copy from output
+- [ ] vimish keys in output
 - [x] client-side prompt editing
 - [ ] client-side chat/message editing (how? temporarily set the input field history?)
 - [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex).
@@ -71,10 +74,9 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [ ] dump default conf if missing
 
 
-## intended functionality by package
 
 
-### unallocated
+## unallocated / out of scope
 
 audio streaming ?
 workflows (tree of instruction templates)
