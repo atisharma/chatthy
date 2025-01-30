@@ -45,9 +45,11 @@ Synthesise prompts for retreival-augmented generation.
    #^ int [max-results 20]
    #^ int [min-results 3]
    #^ str [key "extract"]]
-  "Formatted extracts from a vdb query. Use as a user instruction.
+  "Return formatted extracts from a vdb query.
+  Use as a user instruction.
   Return as many results as fit in `max-length` tokens.
-  If it's below `min-results` results, use summaries instead of extracts."
+  If less than `min-results` results fit in that length,
+  retry using summaries instead of extracts."
   (let [v             (await (get-vdb profile))
         results       (similar v query :top max-results)
         ;; Use pre-computed length, otherwise, calculate.

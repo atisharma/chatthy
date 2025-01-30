@@ -2,6 +2,10 @@
 
 An asynchronous terminal server/multiple-client setup for conducting and managing chats with LLMs.
 
+This is the successor project to [llama-farm](https://github.com/atisharma/llama_farm)
+
+The RAG/agent functionality should be split out into an API layer.
+
 
 ### network architecture
 
@@ -18,7 +22,7 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] chat truncation to token length
 - [x] rename chat
 - [x] profiles (profile x personalities -> sets of chats)
-- [ ] export chat to local file
+- [ ] import/export chat to local file
 
 
 ### context workspace
@@ -28,27 +32,8 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] client inject from other sources, e.g. youtube (trag)
 - [x] templates for standard instruction requests (trag)
 - [x] context workspace - bench/suspend files (hidden by filename)
-
-
-### tool / agentic use
-
-- [ ] (auto) tools (evolve from llama-farm -> trag)
-- [ ] user defined tool plugins
-- [ ] server use vdb context at LLM will (tool)
-- [ ] iterative workflows (refer to llama-farm)
-- [ ] tool chains
-- [ ] file edit/write
-- [ ] file patch/diff
-- [ ] allow model to manage workspace
-
-
-### RAG
-
-- [x] summaries and standard client instructions (trag)
-- [x] server use vdb context on request
-- [ ] consider best method of pdf conversion / ingestion, OOB
-- [ ] full arxiv paper ingestion (fvdb) - consolidate into one latex file OOB
-- [ ] vdb result reranking with context, and winnowing
+- [ ] local files / folders in transient workspace
+- [ ] checkboxes for delete / show / hide
 
 
 ### client interface
@@ -59,26 +44,57 @@ An asynchronous terminal server/multiple-client setup for conducting and managin
 - [x] decent REPL
 - [x] REPL command mode
 - [x] cut/copy from output
-- [ ] vimish keys in output
 - [x] client-side prompt editing
-- [ ] client-side chat/message editing (how? temporarily set the input field history?)
+- [ ] vimish keys in output
+- [ ] client-side chat/message editing (how? temporarily set the input field history? Fire up `$EDITOR` in client?)
+        - edit via chat local import/export
 - [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex).
 - [ ] generation cancellation
 
 
-### miscellaneous / extensions
+### multimodal
 
 - [ ] design with multimodal models in mind
 - [ ] image sending and use
+- [ ] image display
+
+
+### miscellaneous / extensions
+
 - [x] use proper config dir (group?)
 - [ ] dump default conf if missing
 
 
+### tool / agentic use
+
+Use agents at the API level, which is to say, use an intelligent router.
+This separates the chatthy system from the RAG/LLM logic.
+
+- [ ] (auto) tools (evolve from llama-farm -> trag)
+- [ ] user defined tool plugins
+- [ ] server use vdb context at LLM will (tool)
+- [ ] iterative workflows (refer to llama-farm)
+- [ ] tool chains
+- [ ] tool: workspace file write, delete
+- [ ] tool: workspace file patch/diff
+- [ ] tool: rag query tool
+- [ ] MCP agents?
+- [ ] smolagents / archgw?
+
+
+### RAG
+
+- [x] summaries and standard client instructions (trag)
+- [x] server use vdb context on request
+- [ ] consider best method of pdf conversion / ingestion, OOB
+- [ ] full arxiv paper ingestion (fvdb) - consolidate into one latex file OOB
+- [ ] vdb result reranking with context, and winnowing (agent?)
+- [ ] vdb results -> workspace (agent?)
 
 
 ## unallocated / out of scope
 
-audio streaming ?
+audio streaming ? - see matatonic's servers
 workflows (tree of instruction templates)
 tasks
 

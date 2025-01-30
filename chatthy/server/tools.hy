@@ -7,8 +7,6 @@ Tools made available to the LLM.
 
 (import inspect)
 
-(import hyjinx [llm first last])
-
 (import trag.retrieve [arxiv
                        calculator
                        ddg-answers
@@ -18,11 +16,19 @@ Tools made available to the LLM.
                        weather
                        youtube])
 
+(import chatthy.server.rag [vdb-extracts extract-output])
 
 ;; TODO how to get parameter descriptions?
 
+;; TODO let LLM extract the important/pertinent bits of vdb results
+(defn vdb []) ; choose to reply with commands.vdb instead of commands.chat
+
+;; TODO let LLM drop file from its workspace
+;; TODO let LLM edit file in its workspace (diff/patch)
+
+
 ;; list of exported tools (functions)
-(setv tools [arxiv calculator ddg-answers ddg-news location url weather youtube])
+(setv tools [arxiv calculator ddg-answers ddg-news location url weather youtube vdb])
 
 
 (defmacro if-empty [x #* body]

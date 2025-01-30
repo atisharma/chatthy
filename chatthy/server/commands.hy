@@ -124,7 +124,7 @@ Implements server's RPC methods (commands)
                             (tabulate (.items d-info)))))))
 
 (defn :async [rpc] vdbreload [* sid profile #** kwargs]
-  "Reload the vdb."
+  "Reload the vdb (e.g. after adding files)."
   (await (vdb-reload :profile profile)))
 
 
@@ -255,8 +255,9 @@ Implements server's RPC methods (commands)
     reply))
 
 (defn :async [rpc] messages [* sid profile chat #** kwargs]
-  ;; no docstring so it doesn't advertise to clients
-  ;;Send all the user's messages.
+  "HIDDEN
+  Send all the user's messages.
+  "
   (await (client-rpc sid
                      "messages"
                      :chat (get-chat profile chat)
@@ -274,7 +275,6 @@ Implements server's RPC methods (commands)
   "HIDDEN
   Normal chat RPC, return input to client followed by a stream of the reply.
   Add the new message pair to the saved chat."
-  ;; no docstring so it doesn't advertise to clients
   (await (client-rpc sid "echo" :result {"role" "user" "content" line}))
   (let [system-prompt (get-prompt profile prompt-name)
         system-msg {"role" "system" "content" system-prompt}
@@ -294,7 +294,8 @@ Implements server's RPC methods (commands)
     (set-chat saved-messages profile chat)))
 
 (defn :async [rpc] vdb [* sid profile chat prompt-name query provider #** kwargs]
-  "Do RAG using the vdb alongside the chat context to respond to the query.
+  "HIDDEN
+  Do RAG using the vdb alongside the chat context to respond to the query.
   `prompt_name` optionally specifies use of a particular prompt (by name).
   `query` specifies the text of the query."
   ;; FIXME  guard against final user message being too long;
@@ -347,7 +348,7 @@ Implements server's RPC methods (commands)
                  news f"news: {news}"
                  url f"url: {url}"
                  wikipedia f"wikipedia: {wikipedia}"
-                 youtube f"YouTube: {youtube}")
+                 youtube f"YouTube: {youtube}\n{(retrieve.youtube-meta youtube)}")
         text (cond
                text text
                youtube (retrieve.youtube youtube :punctuate (:punctuate cfg False))

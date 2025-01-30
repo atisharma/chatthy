@@ -51,10 +51,13 @@ Chat completion functions.
         scheme (.pop provider-config "scheme" "tabby")
         api-key (.pop provider-config "api_key" None)
         model (.pop provider-config "model" None)
+        ;; default generation parameters (e.g. temperature)
+        ;; are set under the "params" key in provider-config
         client (match scheme
-                 "anthropic" (llm.AsyncAnthropic :api-key api-key)
-                 "openai" (llm.AsyncOpenAI :api-key api-key)
-                 "tabby" (llm.AsyncTabbyClient :api-key api-key #** provider-config))]
+                 "anthropic" (llm.AsyncAnthropic :api-key api-key #** provider-config)
+                 "openai" (llm.AsyncOpenAI :api-key api-key #** provider-config)
+                 "tabby" (llm.AsyncTabbyClient :api-key api-key #** provider-config)
+                 "deepinfra" (llm.AsyncTabbyClient :api-key api-key #** provider-config))]
     (when model
       (llm.model-load client model))
     client))
