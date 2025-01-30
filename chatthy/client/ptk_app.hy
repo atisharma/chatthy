@@ -11,6 +11,7 @@ Prompt-toolkit application for simple chat REPL.
 
 (import asyncio)
 (import clipman)
+(import flatlatex)
 (import re)
 (import os)
 (import pansi [ansi])
@@ -226,6 +227,28 @@ Prompt-toolkit application for simple chat REPL.
       (setv input-field.window.height (Dimension :max 3 :min 1)))
     (setv input-field.document (Document :text (.strip text) :cursor-position 0))))
 
+(defn render-latex [s]
+  "Render latex strings using flatlatex."
+  (let [conv (flatlatex.converter)
+        pattern r"\$\$.*?\$\$|\\\[.*?\\\]|\\\(.*?\\\)"
+        parts (re.split r"```.*?```" s :flags re.DOTALL)]
+
+    (defn safe-convert [text]
+      (if (.strip text)
+        (try
+          f"{text} CONV: {(cut (conv.convert text) 2 -2)}" ;; move to right of term
+          (except [flatlatex.latexfuntypes.LatexSyntaxError]
+            f"ERR: {text}"))
+        text))
+
+    (for [i (range 0 (len parts) 2)]
+      (setv (get parts i)
+            (re.sub pattern
+                    (fn [m] (safe-convert (m.group 0)))
+                    (get parts i)
+                    :flags re.DOTALL)))
+    (.join "" parts)))
+
 (defn output-text [output [replace False]]
   "Append (replace) output to output buffer text.
   Replaces text of output buffer.
@@ -233,8 +256,11 @@ Prompt-toolkit application for simple chat REPL.
   (let [new-text (if replace
                    output
                    (+ output-field.text output))
-        tabbed-text (.replace new-text "\t" "    ")]
-    (setv output-field.document (Document :text tabbed-text :cursor-position (len tabbed-text))))
+        tabbed-text (.replace new-text "\t" "    ")
+        latex-rendered-text tabbed-text]
+        ;; FIXME
+        ;latex-rendered-text (render-latex tabbed-text)]
+    (setv output-field.document (Document :text latex-rendered-text :cursor-position (len latex-rendered-text))))
   (invalidate))
 
 (defn output-help []
