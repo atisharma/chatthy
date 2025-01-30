@@ -57,7 +57,7 @@ Chat completion functions.
                  "anthropic" (llm.AsyncAnthropic :api-key api-key #** provider-config)
                  "openai" (llm.AsyncOpenAI :api-key api-key #** provider-config)
                  "tabby" (llm.AsyncTabbyClient :api-key api-key #** provider-config)
-                 "deepinfra" (llm.AsyncTabbyClient :api-key api-key #** provider-config))]
+                 "deepinfra" (llm.AsyncOpenAI :api-key api-key #** provider-config))]
     (when model
       (llm.model-load client model))
     client))

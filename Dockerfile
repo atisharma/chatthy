@@ -20,7 +20,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     build-essential swig \
     libmagic-dev \
     terminfo foot-terminfo \
-    zlib1g-dev libssl-dev && \
+    zlib1g-dev libssl-dev neovim && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
