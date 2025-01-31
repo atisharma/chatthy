@@ -348,7 +348,7 @@ Implements server's RPC methods (commands)
                  news f"news: {news}"
                  url f"url: {url}"
                  wikipedia f"wikipedia: {wikipedia}"
-                 youtube f"YouTube: {youtube}\n{(retrieve.youtube-meta youtube)}")
+                 youtube f"YouTube: {youtube}\n{(retrieve.youtube-meta-str youtube)}")
         text (cond
                text text
                youtube (retrieve.youtube youtube :punctuate (:punctuate cfg False))
