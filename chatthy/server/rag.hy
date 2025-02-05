@@ -35,11 +35,11 @@ Synthesise prompts for retreival-augmented generation.
   that resulted from the reply of the model to the instruction from `vdb-extracts`
   or `vdb-summaries`."
   (.join "\n"
-    (re.findall r"<rag:output>(.*?)</rag:output>" text re.DOTALL)))
+    (re.findall r"<rag:output>(.*?)</rag:output>" text :flags re.DOTALL)))
 
 (defn remove-think-tags [#^ str text]
   "Use tags and regex to remove text in `<think>` and `</think>` tags."
-  (re.sub r"^<think>(.*?)</think>" text re.DOTALL))
+  (re.sub r"^<think>(.*?)</think>" text :flags re.DOTALL))
 
 (defn :async vdb-extracts
   [#^ str query
