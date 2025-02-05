@@ -23,7 +23,7 @@ Manage the client's shared state.
 (setv chat (:chat cfg "default"))
 (setv profile (:profile cfg "Anon"))
 (setv provider (:provider cfg None))
-(setv provider (:rag-provider cfg provider))
+(setv rag-provider (:rag-provider cfg provider))
 (setv prompt-name (:prompt cfg "default"))
 
 (setv server-status {"result" "Connecting ☇"})
