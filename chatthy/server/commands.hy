@@ -295,7 +295,7 @@ Implements server's RPC methods (commands)
                              "provider" provider})
     (set-chat saved-messages profile chat)))
 
-(defn :async [rpc] vdb [* sid profile chat prompt-name query [provider "rag"] #** kwargs]
+(defn :async [rpc] vdb [* sid profile chat prompt-name query rag-provider #** kwargs]
   "HIDDEN
   Do RAG using the vdb alongside the chat context to respond to the query.
   `prompt_name` optionally specifies use of a particular prompt (by name).
@@ -319,7 +319,7 @@ Implements server's RPC methods (commands)
                                                (token-count system-prompt)
                                                (token-count ws-msgs)
                                                (token-count rag-instruction))
-                                     :provider provider)
+                                     :provider rag-provider)
         sent-messages [system-msg #* ws-msgs #* messages rag-usr-msg]
         reply (await (stream-reply sid chat provider sent-messages #** kwargs))]
     (.append saved-messages saved-usr-msg)

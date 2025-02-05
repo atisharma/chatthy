@@ -69,7 +69,8 @@ The main REPL where we read output and issue commands.
             (await (server-rpc :method "vdb"
                                :chat state.chat
                                :query (:line action)
-                               :prompt-name state.prompt-name))))) 
+                               :prompt-name state.prompt-name 
+                               :provider state.rag-provider)))))
       (except [e [Exception]]
         (print-exception e)))))
 
