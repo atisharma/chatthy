@@ -23,6 +23,7 @@ The RAG/agent functionality should be split out into an API layer.
 - [x] rename chat
 - [x] profiles (profile x personalities -> sets of chats)
 - [ ] import/export chat to local file
+- [x] remove text between <think> tags when saving
 
 
 ### context workspace
@@ -86,6 +87,7 @@ This separates the chatthy system from the RAG/LLM logic.
 
 - [x] summaries and standard client instructions (trag)
 - [x] server use vdb context on request
+- [ ] dedicate small RAG model (e.g. Mistral Small, Phi-4)
 - [ ] consider best method of pdf conversion / ingestion, OOB
 - [ ] full arxiv paper ingestion (fvdb) - consolidate into one latex file OOB
 - [ ] vdb result reranking with context, and winnowing (agent?)

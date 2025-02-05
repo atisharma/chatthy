@@ -19,7 +19,8 @@ Implements server's RPC methods (commands)
 (import chatthy.server.completions [stream-completion truncate])
 (import chatthy.embeddings [token-count])
 (import chatthy.server.rag [vdb-extracts vdb-info vdb-reload
-                            extract-output
+                            extract-rag-output
+                            remove-think-tags
                             workspace-messages])
 (import chatthy.server.state [cfg
                               socket
@@ -269,8 +270,6 @@ Implements server's RPC methods (commands)
     (set-chat messages profile chat))
   (await (messages :sid sid :profile profile :chat chat)))
 
-;; TODO consolidate `chat`, `vdb` and `smry` rpcs.
-
 (defn :async [rpc] chat [* sid profile chat prompt-name line provider #** kwargs]
   "HIDDEN
   Normal chat RPC, return input to client followed by a stream of the reply.
@@ -290,14 +289,18 @@ Implements server's RPC methods (commands)
         sent-messages [system-msg #* ws-msgs #* messages usr-msg]
         reply (await (stream-reply sid chat provider sent-messages #** kwargs))]
     (.append saved-messages usr-msg)
-    (.append saved-messages {"role" "assistant" "content" (.strip reply) "timestamp" (time)})
+    (.append saved-messages {"role" "assistant"
+                             "content" (remove-think-tags (.strip reply))
+                             "timestamp" (time)
+                             "provider" provider})
     (set-chat saved-messages profile chat)))
 
-(defn :async [rpc] vdb [* sid profile chat prompt-name query provider #** kwargs]
+(defn :async [rpc] vdb [* sid profile chat prompt-name query [provider "rag"] #** kwargs]
   "HIDDEN
   Do RAG using the vdb alongside the chat context to respond to the query.
   `prompt_name` optionally specifies use of a particular prompt (by name).
-  `query` specifies the text of the query."
+  `query` specifies the text of the query.
+  Requires `rag` model to be specified in server config."
   ;; FIXME  guard against final user message being too long;
   ;;        recursion depth in `truncate`?
   ;; TODO offer as tool
@@ -320,7 +323,10 @@ Implements server's RPC methods (commands)
         sent-messages [system-msg #* ws-msgs #* messages rag-usr-msg]
         reply (await (stream-reply sid chat provider sent-messages #** kwargs))]
     (.append saved-messages saved-usr-msg)
-    (.append saved-messages {"role" "assistant" "content" (extract-output reply) "timestamp" (time)})
+    (.append saved-messages {"role" "assistant"
+                             "content" (extract-rag-output reply)
+                             "timestamp" (time)
+                             "provider" provider})
     (set-chat saved-messages profile chat)))
 
 (defn :async [rpc] smry 
@@ -363,6 +369,9 @@ Implements server's RPC methods (commands)
     (await (client-rpc sid "echo" :result saved-usr-msg))
     (let [reply (await (stream-reply sid chat provider sent-messages))]
       (.append saved-messages saved-usr-msg)
-      (.append saved-messages {"role" "assistant" "content" (.strip reply) "timestamp" (time)})
+      (.append saved-messages {"role" "assistant"
+                               "content" (remove-think-tags (.strip reply))
+                               "timestamp" (time)
+                               "provider" provider})
       (set-chat saved-messages profile chat))))
 

@@ -30,12 +30,19 @@ Synthesise prompts for retreival-augmented generation.
 ;; * form messages text with vdb context
 ;; -----------------------------------------------------------------------------
 
-(defn extract-output [#^ str text]
+(setv rag-tag (re.compile r"<rag:output>(.*?)</rag:output>" re.DOTALL)
+      think-tag (re.compile r"<think>(.*?)</think>" re.DOTALL))
+      
+(defn extract-rag-output [#^ str text]
   "Use tags and regex to extract the text between `<rag:output>` and `</rag:output>`,
   that resulted from the reply of the model to the instruction from `vdb-extracts`
   or `vdb-summaries`."
-  (let [pattern (re.compile r"<rag:output>(.*?)</rag:output>" re.DOTALL)]
-    (.join "\n" (re.findall pattern text))))
+  (.join "\n"
+    (re.findall rag-tag text)))
+
+(defn remove-think-tags [#^ str text]
+  "Use tags and regex to remove text in `<think>` and `</think>` tags."
+  (re.sub think-tag text))
 
 (defn :async vdb-extracts
   [#^ str query
