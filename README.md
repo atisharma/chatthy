@@ -11,7 +11,7 @@ The RAG/agent functionality should be split out into an API layer.
 
 - [x] client/server RPC-type architecture
 - [x] message signing
-- [ ] ensure chunk ordering
+- [ ] ensure stream chunk ordering
 
 
 ### chat management
@@ -22,7 +22,7 @@ The RAG/agent functionality should be split out into an API layer.
 - [x] chat truncation to token length
 - [x] rename chat
 - [x] profiles (profile x personalities -> sets of chats)
-- [ ] import/export chat to local file
+- [ ] import/export chat to client-side file
 - [x] remove text between <think> tags when saving
 
 
@@ -87,8 +87,8 @@ This separates the chatthy system from the RAG/LLM logic.
 
 - [x] summaries and standard client instructions (trag)
 - [x] server use vdb context on request
-- [ ] dedicate small RAG model (e.g. Mistral Small, Phi-4)
-- [ ] consider best method of pdf conversion / ingestion, OOB
+- [x] set RAG provider client-side (e.g. Mistral Small, Phi-4)
+- [ ] consider best method of pdf conversion / ingestion, OOB (image models?)
 - [ ] full arxiv paper ingestion (fvdb) - consolidate into one latex file OOB
 - [ ] vdb result reranking with context, and winnowing (agent?)
 - [ ] vdb results -> workspace (agent?)
