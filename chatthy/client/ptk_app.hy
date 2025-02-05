@@ -284,7 +284,7 @@ Prompt-toolkit application for simple chat REPL.
     (when input-field.multiline
       (setv modeline (.join " " [modeline f"{ansi.blue}{ansi.rev}multiline{ansi.reset}"])))
     (when input-field.vdb
-      (setv modeline (.join " " [modeline f"{ansi.cyan}{ansi.rev}vdb{ansi.reset}"])))
+      (setv modeline (.join " " [modeline f"{ansi.cyan}{ansi.rev}vdb:{state.rag-provider}{ansi.reset}"])))
     (setv mode-field.text (ANSI modeline))
     (invalidate)))
 
