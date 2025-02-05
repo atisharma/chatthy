@@ -39,7 +39,7 @@ Synthesise prompts for retreival-augmented generation.
 
 (defn remove-think-tags [#^ str text]
   "Use tags and regex to remove text in `<think>` and `</think>` tags."
-  (re.sub r"^<think>\s*(.*?)\s*</think>" text r"" :flags re.DOTALL))
+  (re.sub r"^<think>\s*(.*?)\s*</think>" "" text :flags re.DOTALL))
 
 (defn :async vdb-extracts
   [#^ str query
