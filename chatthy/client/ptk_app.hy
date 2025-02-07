@@ -7,7 +7,7 @@ Prompt-toolkit application for simple chat REPL.
 
 (import hyrule [assoc inc])
 (import hyjinx.lib [first rest slurp sync-await])
-(import itertools [pairwise])
+(import itertools [batched])
 
 (import asyncio)
 (import clipman)
@@ -85,14 +85,14 @@ Prompt-toolkit application for simple chat REPL.
   None)
   
 (defn command-input-handler [buffer]
-  "Send server RPC from the input buffer."
+  "Send client command, or server RPC, from the input buffer."
   (setv input-field.command False)
   (when buffer.text
     (let [arglist (shlex.split buffer.text)
           method (first arglist)
           ;; strip leading : from kws, so :key -> "key"
           ;; and mangle kw, so "-" -> "_"
-          kwargs (dfor [k v] (pairwise (rest arglist))
+          kwargs (dfor [k v] (batched (rest arglist) 2)
                    (mangle (re.sub "^:" "" k)) v)]
       (assoc kwargs "chat" (:chat kwargs state.chat)) ; default to current chat
       (client-command method #** kwargs)))
@@ -100,14 +100,15 @@ Prompt-toolkit application for simple chat REPL.
   None)
 
 (defn client-command [method #** kwargs]
-  "Client commands are parsed here."
+  "Client commands are parsed here.
+  Commands that don't match to client commands are conveyed as server RPCs."
   (match [method (first kwargs)]
     ;; TODO  image queueing up here
     ;;       format and send to input queue
     ["load" "chat"]
     (set-chat :chat (:chat kwargs))
 
-    [load "image"]
+    ["load" "image"]
     (raise NotImplementedError)
 
     ["load" "input"]

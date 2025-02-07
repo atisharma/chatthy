@@ -7,7 +7,6 @@ Synthesise prompts for retreival-augmented generation.
 (import asyncio)
 (import itertools [accumulate])
 (import numpy [sum cumsum])
-(import re)
 
 (import fvdb [faiss info similar ingest])
 (import fvdb.summaries [extractive-summary])
@@ -29,17 +28,6 @@ Synthesise prompts for retreival-augmented generation.
 
 ;; * form messages text with vdb context
 ;; -----------------------------------------------------------------------------
-
-(defn extract-rag-output [#^ str text]
-  "Use tags and regex to extract the text between `<rag:output>` and `</rag:output>`,
-  that resulted from the reply of the model to the instruction from `vdb-extracts`
-  or `vdb-summaries`."
-  (.join "\n"
-    (re.findall r"<rag:output>(.*?)</rag:output>" text :flags re.DOTALL)))
-
-(defn remove-think-tags [#^ str text]
-  "Use tags and regex to remove text in `<think>` and `</think>` tags."
-  (re.sub r"^<think>\s*(.*?)\s*</think>" "" text :flags re.DOTALL))
 
 (defn :async vdb-extracts
   [#^ str query

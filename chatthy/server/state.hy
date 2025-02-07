@@ -128,6 +128,7 @@ Chats and account details are stored as json files.
 
 ;; * chat persistence
 ;; key is profile, chat
+;; TODO: edit chat (client-side)
 ;; -----------------------------------------------------------------------------
 
 (defmethod get-chat [#^ str profile #^ str chat]
@@ -201,6 +202,7 @@ Chats and account details are stored as json files.
 
 
 ;; * prompts
+;; TODO: redo as a directory of files (like chats), rather than in profile
 ;; -----------------------------------------------------------------------------
 
 (defmethod get-prompts [#^ str profile]

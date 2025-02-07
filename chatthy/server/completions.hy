@@ -1,9 +1,11 @@
 "
-Chat completion functions.
+Chat completion and message list management functions.
 "
 
-(require hyrule [of])
+(require hyrule [case])
 (require hyjinx [defmethod])
+
+(import re)
 
 (import hyjinx [llm first last config hash-id coroutine])
 
@@ -11,12 +13,29 @@ Chat completion functions.
 (import chatthy.server.state [cfg])
 
 
+(defn extract-rag-output [#^ str text]
+  "Use tags and regex to extract the text between `<rag:output>` and `</rag:output>`,
+  that resulted from the reply of the model to the instruction from `vdb-extracts`
+  or `vdb-summaries`."
+  (.join "\n"
+    (re.findall r"<rag:output>\s*(.*?)\s*</rag:output>" text :flags re.DOTALL)))
+
+(defn extract-tool-output [#^ str text]
+  "Use tags and regex to extract the text between `<tool:output>` and `</tool:output>`."
+  (.join "\n"
+    (re.findall r"<tool:output>\s*(.*?)\s*</tool:output>" text :flags re.DOTALL)))
+
+(defn remove-think-tags [#^ str text]
+  "Use tags and regex to remove text in `<think>` and `</think>` tags."
+  (re.sub r"^<think>\s*(.*?)\s*</think>" "" text :flags re.DOTALL))
+
 (defn truncate [messages * provider [dropped []] [space (:max-tokens cfg 600)]]
   "Shorten the chat history if it gets too long, in which case
   split it and return two lists, the kept messages, and the dropped messages (in pairs).
   Use `space` to preserve space for new output or other messages that are not
   to be dropped.
   Returns `[messages, dropped]`."
+  ;; TODO: test this function more thoroughly
   (let [context-length (:context-length (get cfg "providers" provider)
                                         (:context-length cfg 30000))
         ;; Any system message must be in the first position
@@ -41,6 +60,14 @@ Chat completion functions.
           (truncate (+ [system-msg] kept) :dropped new-dropped :space space :provider provider)
           (truncate kept :dropped new-dropped :space space :provider provider)))
       [messages dropped])))
+
+(defn rotate [messages [user "user"] [assistant "assistant"]]
+  "Switch user and assistant roles in messages."
+  (lfor msg messages
+    (case (:role msg)
+      user {"role" assistant "content" (:content msg)}
+      assistant {"role" user "content" (:content msg)}
+      else msg)))
 
 (defn provider [client-name]
   "Get the API client object from the config."

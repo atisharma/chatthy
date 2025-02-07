@@ -56,7 +56,7 @@ Implements server side of async DEALER-ROUTER pattern.
 
           (except [e [Exception]]
             (print (.join "\n" (format-exception e)))
-            (await (client-rpc sid "error" :result f"Server exception:\n{(format-exception e)}")))))
+            (await (client-rpc sid "error" :result f"Server exception:\n{(.join "\n" (format-exception e))}")))))
       (except [e [Exception]]
         (print (.join "\n" (format-exception e)))))))
 

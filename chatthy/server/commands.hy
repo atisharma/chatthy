@@ -8,6 +8,7 @@ Implements server's RPC methods (commands)
 (import hyjinx.wire [wrap rpc rpcs])
 
 (import inspect [signature])
+(import itertools [cycle])
 (import re)
 (import tabulate [tabulate])
 (import time [time])
@@ -16,11 +17,14 @@ Implements server's RPC methods (commands)
 (require trag.template [deftemplate])
 
 (import chatthy [__version__])
-(import chatthy.server.completions [stream-completion truncate])
+(import chatthy.server.completions [stream-completion
+                                    rotate
+                                    truncate
+                                    extract-rag-output
+                                    extract-tool-output
+                                    remove-think-tags])
 (import chatthy.embeddings [token-count])
 (import chatthy.server.rag [vdb-extracts vdb-info vdb-reload
-                            extract-rag-output
-                            remove-think-tags
                             workspace-messages])
 (import chatthy.server.state [cfg
                               socket
@@ -31,6 +35,7 @@ Implements server's RPC methods (commands)
 
 
 (deftemplate summary)
+(deftemplate instruct)
 
 ;; * Client RPC message handling
 ;; -----------------------------------------------------------------------------
@@ -290,7 +295,7 @@ Implements server's RPC methods (commands)
         reply (await (stream-reply sid chat provider sent-messages #** kwargs))]
     (.append saved-messages usr-msg)
     (.append saved-messages {"role" "assistant"
-                             "content" (remove-think-tags (.strip reply))
+                             "content" (remove-think-tags reply)
                              "timestamp" (time)
                              "provider" provider})
     (set-chat saved-messages profile chat)))
@@ -299,8 +304,7 @@ Implements server's RPC methods (commands)
   "HIDDEN
   Do RAG using the vdb alongside the chat context to respond to the query.
   `prompt_name` optionally specifies use of a particular prompt (by name).
-  `query` specifies the text of the query.
-  Requires `rag` model to be specified in server config."
+  `query` specifies the text of the query."
   ;; FIXME  guard against final user message being too long;
   ;;        recursion depth in `truncate`?
   ;; TODO offer as tool
@@ -370,8 +374,58 @@ Implements server's RPC methods (commands)
     (let [reply (await (stream-reply sid chat provider sent-messages))]
       (.append saved-messages saved-usr-msg)
       (.append saved-messages {"role" "assistant"
-                               "content" (remove-think-tags (.strip reply))
+                               "content" (remove-think-tags reply)
                                "timestamp" (time)
                                "provider" provider})
       (set-chat saved-messages profile chat))))
+
+(defn :async [rpc] discuss [* sid profile chat prompt-name provider instruction partner #** kwargs]
+  "Discuss a topic between two models (`provider` and `partner`,
+  which defaults to `provider`).
+  Workspace messages are included, and a summary of the conversation context.
+  Adds the new message pair (instruction and final conclusion) to the saved chat."
+  (await (client-rpc sid "status" :result "discussing ⏳"))
+  (await (client-rpc sid "echo" :result {"role" "user" "content" instruction}))
+  (let [provider-pair (cycle [provider partner])
+        system-prompt (instruct "discuss" :instruction instruction)
+        system-msg {"role" "system" "content" system-prompt}
+        ws-msgs (workspace-messages profile)
+        saved-messages (get-chat profile chat)
+        context (await (review :sid sid :chat chat :provider provider :messages saved-messages #** kwargs))
+        context-msg {"role" "user" "content" context "timestamp" (time)}
+        usr-msg {"role" "user" "content" instruction "timestamp" (time)}
+        messages [system-msg #* ws-msgs context-msg]
+        [messages dropped] (truncate messages
+                                     :space (+ (:max-tokens cfg 600)
+                                               (token-count system-prompt)
+                                               (token-count ws-msgs))
+                                     :provider provider)]
+    ;; loop until a conclusion is reached
+    (while (not (in "</tool:output>" (:content (last messages))))
+      (let [current-provider (next provider-pair)]
+        (await (client-rpc sid "chunk" :result f"# {current-provider}\n" :chat chat))
+        (setv reply (await (stream-reply sid chat current-provider messages #** kwargs)))
+        ;; FIXME: potential error where the first message is not a user message.
+        ;; FIXME: potential to run out of context length
+        (setv messages (rotate (+ messages [{"role" "assistant" "content" (remove-think-tags reply)}])))))
+    ;; extract conclusion and save 
+    (.append saved-messages usr-msg)
+    (.append saved-messages {"role" "assistant"
+                             "content" (extract-tool-output reply)
+                             "timestamp" (time)
+                             "provider" provider
+                             "partner-provider" partner})
+    (set-chat saved-messages profile chat)))
+
+(defn :async review [* sid chat provider messages #** kwargs]
+  "Return a string summarising the message list."
+  (await (client-rpc sid "status" :result "reviewing ⏳"))
+  (let [system-prompt (summary "paragraph" :text "The text to summarise is the following conversation.")
+        system-msg {"role" "system" "content" system-prompt}
+        usr-msg {"role" "user" "content" (instruct "conversation_summary")}
+        messages [system-msg #* messages usr-msg]
+        reply (if (> (len messages) 2)
+                (await (stream-reply sid chat provider messages #** kwargs))
+                "<tool:output>(empty message)</tool:output>")]
+    (extract-tool-output reply)))
 
