@@ -394,9 +394,11 @@ Prompt-toolkit application for simple chat REPL.
   (event.app.layout.focus input-field))
 
 (defn [(kb.add "y" :filter (has-focus output-field))] _ [event]
-  "Pressing 'y' will send the output field selection to the clipboard."
+  "Pressing 'y' (yank) will send the output field selection to the clipboard."
   (when output-field.buffer.selection-state
-    (clipman.copy (. (output-field.buffer.copy-selection) text))))
+    (try
+      (clipman.copy (. (output-field.buffer.copy-selection) text))
+      (except clipman.exceptions.UnsupportedError))))
 
 
 ;; * instantiate the singleton

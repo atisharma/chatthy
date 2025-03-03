@@ -67,8 +67,9 @@ Chats and account details are stored as json files.
     pdir))
 
 
-;; * workspace (files stuffed into the context)
+;; * workspace (text files stuffed into the context)
 ;; key is profile, filename
+;; TODO: write image binary files
 ;; -----------------------------------------------------------------------------
 
 (defmethod get-ws [#^ str profile #^ (| str Path) fname]

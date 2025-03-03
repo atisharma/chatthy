@@ -16,7 +16,7 @@ Implements server side of async DEALER-ROUTER pattern.
 
 (import fvdb [similar])
 (import chatthy.server.state [cfg socket get-pubkey])
-(import chatthy.server.commands [client-rpc]) ; this also registers the RPC commands
+(import chatthy.server.interface [client-rpc]) ; this also registers the RPC commands
 
 (import asyncio [CancelledError])
 

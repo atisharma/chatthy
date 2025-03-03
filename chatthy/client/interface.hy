@@ -48,7 +48,7 @@ The client's offered RPCs.
 ;; -----------------------------------------------------------------------------
 
 ;; TODO manage image messages
-(defn quote-lines [line [prefix ["> " "> "]]]
+(defn quote-lines [line [prefix ["> " "  "]]]
   "Quote a single-line string with '> ' (first prefix).
   Quote a multi-line string with '> ' (second prefix)."
   (+ (first prefix)
