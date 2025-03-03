@@ -19,8 +19,6 @@ Prompt-toolkit application for simple chat REPL.
 (import shutil [get-terminal-size])
 (import shlex)
 
-(import clipman)
-
 (import prompt-toolkit [ANSI])
 (import prompt-toolkit.application [Application get-app-or-none])
 (import prompt_toolkit.layout [WindowAlign])
@@ -156,7 +154,10 @@ Prompt-toolkit application for simple chat REPL.
     (sync-await (server-rpc "messages" :chat chat)))
   (title-text))
 
-(clipman.init)
+(try
+  (clipman.init)
+  (except [clipman.exceptions.UnsupportedError]))
+  
 
 (setv kb (KeyBindings))
 
