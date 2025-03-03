@@ -398,7 +398,7 @@ Prompt-toolkit application for simple chat REPL.
   (when output-field.buffer.selection-state
     (try
       (clipman.copy (. (output-field.buffer.copy-selection) text))
-      (except clipman.exceptions.UnsupportedError))))
+      (except [clipman.exceptions.UnsupportedError]))))
 
 
 ;; * instantiate the singleton
