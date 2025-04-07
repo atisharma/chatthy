@@ -26,8 +26,11 @@ Chat completion and message list management functions.
     (re.findall r"<tool:output>\s*(.*?)\s*</tool:output>" text :flags re.DOTALL)))
 
 (defn remove-think-tags [#^ str text]
-  "Use tags and regex to remove text in `<think>` and `</think>` tags."
-  (re.sub r"^<think>\s*(.*?)\s*</think>" "" text :flags re.DOTALL))
+  "Use tags and regex to remove text in `<think>` and `</think>` tags.
+  QwQ does not always produce the opening tag."
+  (re.sub r"^(.*?)\s*</think>" "" 
+    (re.sub r"^<think>\s*(.*?)\s*</think>" "" text :flags re.DOTALL)
+    :flags re.DOTALL))
 
 (defn truncate [messages * provider [dropped []] [space (:max-tokens cfg 600)]]
   "Shorten the chat history if it gets too long, in which case
