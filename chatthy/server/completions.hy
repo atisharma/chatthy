@@ -28,8 +28,8 @@ Chat completion and message list management functions.
 (defn remove-think-tags [#^ str text]
   "Use tags and regex to remove text in `<think>` and `</think>` tags.
   QwQ does not always produce the opening tag."
-  (re.sub r"^(.*?)\s*</think>" "" 
-    (re.sub r"^<think>\s*(.*?)\s*</think>" "" text :flags re.DOTALL)
+  (re.sub r"^(.*?)\s*</think>\s*" "" 
+    (re.sub r"^<think>\s*(.*?)\s*</think>\s*" "" text :flags re.DOTALL)
     :flags re.DOTALL))
 
 (defn truncate [messages * provider [dropped []] [space (:max-tokens cfg 600)]]
