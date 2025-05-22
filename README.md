@@ -51,6 +51,7 @@ The RAG/agent functionality should be split out into an API layer.
         - edit via chat local import/export
 - [ ] latex rendering (this is tricky in the context of prompt-toolkit, but see flatlatex).
 - [ ] generation cancellation
+- [ ] tkinter UI
 
 
 ### multimodal
@@ -74,7 +75,7 @@ This separates the chatthy system from the RAG/LLM logic.
 - [ ] (auto) tools (evolve from llama-farm -> trag)
 - [ ] user defined tool plugins
 - [ ] server use vdb context at LLM will (tool)
-- [ ] iterative workflows (refer to llama-farm)
+- [ ] iterative workflows (refer to llama-farm, consider smolagents)
 - [ ] tool chains
 - [ ] tool: workspace file write, delete
 - [ ] tool: workspace file patch/diff
@@ -88,7 +89,7 @@ This separates the chatthy system from the RAG/LLM logic.
 - [x] summaries and standard client instructions (trag)
 - [x] server use vdb context on request
 - [x] set RAG provider client-side (e.g. Mistral Small, Phi-4)
-- [ ] consider best method of pdf conversion / ingestion, OOB (image models?)
+- [ ] consider best method of pdf conversion / ingestion (fvdb), OOB (image models?)
 - [ ] full arxiv paper ingestion (fvdb) - consolidate into one latex file OOB
 - [ ] vdb result reranking with context, and winnowing (agent?)
 - [ ] vdb results -> workspace (agent?)
@@ -99,7 +100,3 @@ This separates the chatthy system from the RAG/LLM logic.
 audio streaming ? - see matatonic's servers
 workflows (tree of instruction templates)
 tasks
-
-arXiv paper -> latex / md
-pdf paper -> latex / md
-
