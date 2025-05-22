@@ -20,15 +20,16 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Lisp"
 ]
 dependencies = [
     "clipman",
+    "colorist",
     "flatlatex",
     "hy",
     "hyjinx[zmq]",
     "hyrule",
-    "pansi==2020.7.3",
     "platformdirs",
     "prompt_toolkit",
     "pygments",

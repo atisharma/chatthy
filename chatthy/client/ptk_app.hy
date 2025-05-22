@@ -14,7 +14,7 @@ Prompt-toolkit application for simple chat REPL.
 (import flatlatex)
 (import re)
 (import os)
-(import pansi [ansi])
+(import colorist [Color])
 (import pathlib [Path])
 (import shutil [get-terminal-size])
 (import shlex)
@@ -141,9 +141,9 @@ Prompt-toolkit application for simple chat REPL.
   "Set the input field text prompt."
   (cond
     n "⋮ "
-    input-field.command (ANSI f"{ansi.red}: ")
-    input-field.multiline (ANSI f"{ansi.blue}> ")
-    :else (ANSI f"{ansi.green}> ")))
+    input-field.command (ANSI f"{Color.RED}: ")
+    input-field.multiline (ANSI f"{Color.BLUE}> ")
+    :else (ANSI f"{Color.GREEN}> ")))
   
 (defn set-chat [* [chat None]]
   "Set the chat id."
@@ -282,11 +282,11 @@ Prompt-toolkit application for simple chat REPL.
   "Set the mode field text. Parses ANSI codes."
   (let [modeline ""]
     (when input-field.command
-      (setv modeline (.join " " [modeline f"{ansi.red}{ansi.rev}command{ansi.reset}"])))
+      (setv modeline (.join " " [modeline f"{Color.RED}{Effect.REVERSE}command{Effect.REVERSE-OFF}{Color.OFF}"])))
     (when input-field.multiline
-      (setv modeline (.join " " [modeline f"{ansi.blue}{ansi.rev}multiline{ansi.reset}"])))
+      (setv modeline (.join " " [modeline f"{Color.BLUE}{Effect.REVERSE}multiline{Effect.REVERSE-OFF}{Color.OFF}"])))
     (when input-field.vdb
-      (setv modeline (.join " " [modeline f"{ansi.cyan}{ansi.rev}vdb:{state.rag-provider}{ansi.reset}"])))
+      (setv modeline (.join " " [modeline f"{Color.CYAN}{Effect.REVERSE}vdb:{state.rag-provider}{Effect.REVERSE-OFF}{Color.OFF}"])))
     (setv mode-field.text (ANSI modeline))
     (invalidate)))
 
