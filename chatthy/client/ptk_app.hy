@@ -14,7 +14,7 @@ Prompt-toolkit application for simple chat REPL.
 (import flatlatex)
 (import re)
 (import os)
-(import colorist [Color])
+(import colorist [Color Effect])
 (import pathlib [Path])
 (import shutil [get-terminal-size])
 (import shlex)
