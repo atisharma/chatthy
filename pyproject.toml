@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-  "setuptools>=64"
+  "setuptools>=74"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -13,9 +13,9 @@ authors = [
 dynamic = ["version", "readme"]
 requires-python = ">=3.11"
 keywords = ["hy", "hylang", "zeromq", "llm", "openai", "anthropic"]
-license = {file = "LICENSE"}
+license = "AGPL-3.0-or-later"
+license-files = ["LICEN[CS]E*", "AUTHORS"]
 classifiers = [
-    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -27,7 +27,7 @@ dependencies = [
     "clipman",
     "colorist",
     "flatlatex",
-    "hy",
+    "hy>=1.0",
     "hyjinx[zmq]",
     "hyrule",
     "platformdirs",
