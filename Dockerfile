@@ -39,6 +39,7 @@ RUN pip install --no-cache-dir faiss-cpu
 RUN pip install --no-cache-dir \
     deepmultilingualpunctuation \
     fvdb trag \
+    accelerate sentence-transformers \
     "chatthy[server] @ git+https://github.com/atisharma/chatthy"
 
 # EXPECTED FILES TO SET IN DOCKER-COMPOSE
