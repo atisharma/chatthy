@@ -77,7 +77,7 @@ Implements server's RPC methods (commands)
     (cond
       ;; client has specified both prompt name and text, so set the prompt
       (and name prompt)
-      (update-prompt profile prompt-name prompt)
+      (update-prompt profile name prompt)
 
       ;; client hasn't specified prompt text, so just get and return
       (and name)
