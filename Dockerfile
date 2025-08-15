@@ -1,11 +1,10 @@
-###>>>~~~                         ~~~<<<###
+###>>>~~~---                   ---~~~<<<###
 # CPU version of chatthy and dependencies #
-###>>>~~~                         ~~~<<<###
+###>>>~~~---                   ---~~~<<<###
 
-# faiss-cpu build fails on 3.13
-ARG PYTHON_VERSION_SHORT="3.12"
+ARG PYTHON_VERSION_SHORT="3.13"
 
-FROM python:${PYTHON_VERSION_SHORT}-bookworm
+FROM python:${PYTHON_VERSION_SHORT}-trixie
 
 # Using FROM resets ARG.
 ARG PYTHON_VERSION_SHORT
