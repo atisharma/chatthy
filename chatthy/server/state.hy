@@ -208,7 +208,7 @@ Chats and account details are stored as json files.
 
 (defmethod get-prompts [#^ str profile]
   "Get merged user-defined and server-defined prompts."
-  (let [prompts (:prompts (get-account profile))]
+  (let [prompts (:prompts (get-account profile) {})]
     (| (:prompts cfg) prompts)))
 
 (defmethod get-prompt [#^ str profile #^ str prompt-name]

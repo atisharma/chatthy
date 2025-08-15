@@ -5,7 +5,7 @@ Prompt-toolkit application for simple chat REPL.
 (import hy [mangle])
 (require hyrule [defmain])
 
-(import hyrule [assoc inc])
+(import hyrule [assoc inc dec])
 (import hyjinx.lib [first rest slurp sync-await])
 (import itertools [batched])
 
@@ -63,9 +63,10 @@ Prompt-toolkit application for simple chat REPL.
 
 (defn accept-handler [buffer]
   "Dispatch to handler based on mode."
-  (if input-field.command
-    (command-input-handler buffer)
-    (queue-input-handler buffer)))
+  (cond
+    input-field.command (command-input-handler buffer)
+    input-field.edit (edit-input-handler buffer)
+    :else (queue-input-handler buffer)))
 
 (defn queue-input-handler [buffer]
   "Put the input in the queue."
@@ -133,7 +134,20 @@ Prompt-toolkit application for simple chat REPL.
 
   (title-text))
 
+(defn edit-input-handler [buffer]
+  "Replace a specific message with the buffer text."
+  ;; the put is async, but called from sync function
+  (setv input-field.edit False)
+  (when buffer.text
+    (sync-await
+      (server-rpc "replace"
+        :chat state.chat
+        :content buffer.text
+        :index input-field.edit-index)))
+  (mode-text)
+  None)
 
+  
 ;; * setters, app state, text fields
 ;; ----------------------------------------------------------------------------
 
@@ -142,6 +156,7 @@ Prompt-toolkit application for simple chat REPL.
   (cond
     n "⋮ "
     input-field.command (ANSI f"{Color.RED}: ")
+    input-field.edit (ANSI f"{Color.MAGENTA}> ")
     input-field.multiline (ANSI f"{Color.BLUE}> ")
     :else (ANSI f"{Color.GREEN}> ")))
   
@@ -176,10 +191,13 @@ Prompt-toolkit application for simple chat REPL.
                             :wrap-lines True
                             :get-line-prefix set-input-prompt
                             :accept-handler accept-handler))
+
+;; initialise the input field state
 (setv input-field.multiline False)
 (setv input-field.command False)
+(setv input-field.edit False)
+(setv input-field.edit-index 0)
 (setv input-field.vdb False)
-(setv input-field.buffer.multiline (Condition (fn [] input-field.multiline)))
   
 
 ;; * the REPL app and state-setting functions
@@ -219,15 +237,18 @@ Prompt-toolkit application for simple chat REPL.
   (setv title-field.text f"{state.profile} - {state.chat} ({state.token-count}+{state.workspace-count}) [{state.prompt-name}@{state.provider}] ")
   (invalidate))
 
-(defn input-text [text * [multiline False] [command False]]
+(defn input-text [text * [multiline False] [command False] [edit False] [index 0]]
   "Set the input field text for editing."
   (let [term (get-terminal-size)]
     (setv input-field.command command)
+    (setv input-field.edit edit)
+    (setv input-field.edit-index index)
     (setv input-field.multiline multiline)
     (if multiline
       (setv input-field.window.height (Dimension (// term.lines 2)))
       (setv input-field.window.height (Dimension :max 3 :min 1)))
-    (setv input-field.document (Document :text (.strip text) :cursor-position 0))))
+    (setv input-field.document (Document :text (.strip text) :cursor-position 0))
+    (mode-text)))
 
 (defn render-latex [s]
   "Render latex strings using flatlatex."
@@ -283,6 +304,8 @@ Prompt-toolkit application for simple chat REPL.
   (let [modeline ""]
     (when input-field.command
       (setv modeline (.join " " [modeline f"{Color.RED}{Effect.REVERSE}command{Effect.REVERSE-OFF}{Color.OFF}"])))
+    (when input-field.edit
+      (setv modeline (.join " " [modeline f"{Color.MAGENTA}{Effect.REVERSE}edit {input-field.edit-index}{Effect.REVERSE-OFF}{Color.OFF}"])))
     (when input-field.multiline
       (setv modeline (.join " " [modeline f"{Color.BLUE}{Effect.REVERSE}multiline{Effect.REVERSE-OFF}{Color.OFF}"])))
     (when input-field.vdb
@@ -356,6 +379,7 @@ Prompt-toolkit application for simple chat REPL.
         (mode-text))
       (do ;; -> command mode
         (setv input-field.command True)
+        (setv input-field.edit False)
         (mode-text)))))
 
 
@@ -371,7 +395,7 @@ Prompt-toolkit application for simple chat REPL.
   (setv input-field.vdb (not input-field.vdb))
   (mode-text))
 
-(defn [(kb.add "escape" "m" :filter input-field.buffer.multiline)] _ [event]
+(defn [(kb.add "escape" "m" :filter (Condition (fn [] input-field.multiline)))] _ [event]
   "Pressing Escape-m (Alt-m) will toggle multi-line input."
   ;; -> single-line
   (setv input-field.window.height (Dimension :min 1 :max 3))
@@ -385,6 +409,36 @@ Prompt-toolkit application for simple chat REPL.
     (setv input-field.window.height (Dimension (// term.lines 2)))
     (setv input-field.multiline True)
     (mode-text)))
+
+(defn [(kb.add "escape" "e" :filter (Condition (fn [] input-field.edit)))] _ [event]
+  "Pressing Escape-e (Alt-e) will toggle chat edit mode."
+  (setv input-field.edit False)
+  (mode-text))
+
+(defn [(kb.add "escape" "e" :filter (Condition (fn [] (not input-field.edit))))] _ [event]
+  "Pressing Escape-e (Alt-e) will toggle chat edit mode."
+  (setv input-field.edit True)
+  (setv input-field.command False)
+  (sync-await (server-rpc "message" :index input-field.edit-index :chat state.chat))
+  (mode-text))
+
+(defn [(kb.add "c-up" :filter (Condition (fn [] input-field.edit)))] _ [event]
+  "Pressing ctrl-up will select previous chat message."
+  (setv input-field.edit-index (dec input-field.edit-index))
+  (sync-await (server-rpc "message" :index input-field.edit-index :chat state.chat))
+  (mode-text))
+
+(defn [(kb.add "c-down" :filter (Condition (fn [] input-field.edit)))] _ [event]
+  "Pressing ctrl-down will select next chat message."
+  (setv input-field.edit-index (inc input-field.edit-index))
+  (sync-await (server-rpc "message" :index input-field.edit-index :chat state.chat))
+  (mode-text))
+
+(defn [(kb.add "c-c" :filter (Condition (fn [] input-field.edit)))] _ [event]
+  "Pressing ctrl-c will cancel the chat message edit."
+  (setv input-field.edit False)
+  (mode-text))
+
 
 
 ;; * output-field key bindings

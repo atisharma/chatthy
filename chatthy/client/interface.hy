@@ -164,7 +164,9 @@ The client's offered RPCs.
 
 (defn :async [rpc] set-prompt [* prompt name #** kwargs]
   "Set the input field text to the payload."
-  (input-text
-    f"prompts :name {name} :prompt \"{prompt}\""
-    :command True))
+  (input-text f"prompts :name {name} :prompt \"{prompt}\"" :command True))
+
+(defn :async [rpc] edit [* content index #** kwargs]
+  "Set the input field text to the message content."
+  (input-text content :edit True :index index))
 

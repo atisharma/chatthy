@@ -3,6 +3,7 @@ Implements server's RPC methods (commands)
 "
 
 (require hyrule.argmove [-> ->>])
+(import hyrule [assoc])
 
 (import hyjinx.lib [first last short-id])
 (import hyjinx.wire [wrap rpc rpcs])
@@ -158,6 +159,13 @@ Implements server's RPC methods (commands)
   (copy-chat profile chat to)
   (await (chats :sid sid :profile profile)))
 
+(defn :async [rpc] replace [* sid profile chat content index #** kwargs]
+  "Replace a chat message's content with a client-supplied copy (presumably edited)."
+  (let [_messages (get-chat profile chat)]
+    (assoc (get _messages index) "content" content)
+    (set-chat _messages profile chat))
+  (await (messages :sid sid :profile profile :chat chat)))
+
 
 ;; * workspace management
 ;; -----------------------------------------------------------------------------
@@ -268,6 +276,13 @@ Implements server's RPC methods (commands)
                      "messages"
                      :chat (get-chat profile chat)
                      :workspace (workspace-messages profile))))
+
+(defn :async [rpc] message [* sid profile chat index #** kwargs]
+  "Send a specific chat message."
+  (let [messages (get-chat profile chat)
+        ;; bound index to within messages list
+        index (% index (len messages))]
+    (await (client-rpc sid "edit" :index index :content (:content (get messages index))))))
 
 (defn :async [rpc] undo [* sid profile chat #** kwargs]
   "Destroy the last message pair (default current chat)."

@@ -15,6 +15,7 @@ Most readline-compatible bindings are implemented.
     Ctrl-l                      refresh message window
     Ctrl-v                      enable RAG using the vdb for this input
     Alt-m                       toggle multiline input
+    Alt-e                       toggle message-editing mode
     Shift-Tab                   toggle focus between input and output
     Tab                         input a command
     Enter (Esc-Enter)           dispatch a command (multiline)
