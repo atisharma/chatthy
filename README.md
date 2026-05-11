@@ -1,3 +1,5 @@
+# RETIRED: almost completely superseded by `pi` + nfs. Use that.
+
 # chatthy
 
 An asynchronous terminal server/multiple-client setup for conducting and managing chats with LLMs.
